@@ -48,6 +48,10 @@ export class StockpileDataService {
   }
 
   public async updateLocationsManifest(manual = false): Promise<void> {
+    await this.manifestDb.read()
+    const lastUpdate = new Date(this.manifestDb.data?.updatedAt || 0)
+    if (!manual && differenceInMinutes(new Date(), lastUpdate) < 15) return
+    if (manual && differenceInMinutes(new Date(), lastUpdate) < 1) return
     let storageLocations = {} as StorageLocationsByRegion
     const response = await fetch(this.mapNamesUrl)
     const mapNames = await response.json()
