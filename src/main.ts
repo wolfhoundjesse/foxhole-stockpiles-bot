@@ -1,7 +1,6 @@
 import { dirname, importx } from "@discordx/importer";
-import type { Interaction, Message } from "discord.js";
 import { IntentsBitField } from "discord.js";
-import { ArgsOf, Bot, Client, Discord, On, Once } from "discordx";
+import { ArgsOf, Client, Discord, Once } from "discordx";
 
 @Discord()
 class FSB {

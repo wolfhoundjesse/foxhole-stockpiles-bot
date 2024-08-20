@@ -1,140 +1,165 @@
 import {
   ActionRowBuilder,
+  APISelectMenuOption,
+  APIStringSelectComponent,
+  Collection,
   ComponentType,
+  EmbedBuilder,
   MessageActionRowComponentBuilder,
   ModalBuilder,
   ModalSubmitInteraction,
   StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   TextInputBuilder,
   TextInputStyle,
   type CommandInteraction,
   type StringSelectMenuInteraction,
-} from "discord.js";
-import { Discord, ModalComponent, SelectMenuComponent, Slash } from "discordx";
+} from 'discord.js'
+import { Discord, ModalComponent, SelectMenuComponent, Slash } from 'discordx'
+import { StockpileDataService } from '../services/stockpile-data-service.js'
+import { Stockpile } from '../models/stockpile.js'
 
 @Discord()
 export class AddStockpile {
-  @Slash({ description: "Add a stockpile", name: "add-stockpile" })
+  public stockpileDataService = new StockpileDataService()
+
+  @Slash({ description: 'Add a stockpile', name: 'add-stockpile' })
   async addStockpile(interaction: CommandInteraction) {
+    const stockpileLocations = await this.stockpileDataService.getStockpileLocations()
     const hexSelectMenu = new StringSelectMenuBuilder()
-      .setCustomId("hex-menu")
-      .setPlaceholder("Select a hex")
-      .addOptions([
-        { label: "Viper Pit", value: "vp" },
-        { label: "Marban Hollow", value: "mh" },
-        { label: "Great Warden Dam", value: "gwd" },
-      ]);
+      .setCustomId('hex-menu')
+      .setPlaceholder('Region/Hex')
+      .addOptions(
+        Object.keys(stockpileLocations).map((key) => {
+          return new StringSelectMenuOptionBuilder().setLabel(key).setValue(key)
+        }),
+      )
 
     const stockpileMenu = new StringSelectMenuBuilder()
-      .addOptions([{ label: "Kirknel Seaport", value: "ks" }])
-      .setCustomId("stockpile-menu")
-      .setPlaceholder("Select a stockpile");
+      .setCustomId('stockpile-menu')
+      .setPlaceholder('Select a stockpile')
+      .addOptions([{ label: "It's Disabled", value: "And Doesn't Matter" }])
+      .setDisabled(true)
 
-    const hexRow =
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        hexSelectMenu
-      );
-    const stockpileRow =
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        stockpileMenu
-      );
+    const hexRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(hexSelectMenu)
+    const stockpileRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      stockpileMenu.setDisabled(true),
+    )
 
-    const message = await interaction.reply({
+    await interaction.reply({
       components: [hexRow, stockpileRow],
       fetchReply: true,
       ephemeral: true,
-    });
-
-    const collector = (await message).createMessageComponentCollector({
-      componentType: ComponentType.StringSelect,
-      maxComponents: 3,
-    });
-
-    const modal = new ModalBuilder()
-      .setTitle("Enter Stockpile Code")
-      .setCustomId("stockpile-code");
-
-    const stockpileCodeInputComponent = new TextInputBuilder()
-      .setCustomId("stockpile-code-input")
-      .setLabel("Enter stockpile code")
-      .setStyle(TextInputStyle.Short);
-
-    const actionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-      stockpileCodeInputComponent
-    );
-    modal.addComponents(actionRow);
-
-    collector.on("collect", (interaction) => {});
-
-    collector.on("end", async (collected) => {
-      await interaction.showModal(modal);
-      console.log("Collected", collected.entries());
-    });
+    })
   }
 
-  @SelectMenuComponent({ id: "hex-menu" })
+  @SelectMenuComponent({ id: 'hex-menu' })
   async handleHexSelect(interaction: StringSelectMenuInteraction) {
-    await interaction.deferReply();
+    const hexValue = interaction.values[0]
+    const updatedHexMenu = new StringSelectMenuBuilder()
+      .setCustomId('hex-menu')
+      .setPlaceholder('Select a hex')
+      .setDisabled(true)
+      .setOptions([{ label: hexValue, value: hexValue, default: true }])
+
+    const hexRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(updatedHexMenu)
+
+    const stockpileLocations = await this.stockpileDataService.getStockpileLocations()
+
+    if (!stockpileLocations) {
+      await interaction.update({
+        components: [hexRow],
+        fetchReply: true,
+      })
+      return
+    }
+    const stockpileOptions = Object.keys(stockpileLocations)
+      .filter((hex) => hex === hexValue)
+      .map((hex) => {
+        return stockpileLocations[hex].map((stockpile) => {
+          const location = `${stockpile.name} - ${stockpile.storageType}`
+          return new StringSelectMenuOptionBuilder()
+            .setLabel(location)
+            .setValue(`${hex}: ${location}`)
+        })
+      })
+      .flat()
+
+    const stockpileMenu = new StringSelectMenuBuilder()
+      .setCustomId('stockpile-menu')
+      .setPlaceholder('Select a stockpile')
+      .addOptions(stockpileOptions)
+
+    const stockpileRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      stockpileMenu,
+    )
+    await interaction.update({
+      components: [hexRow, stockpileRow],
+      fetchReply: true,
+    })
   }
 
-  @SelectMenuComponent({ id: "stockpile-menu" })
+  @SelectMenuComponent({ id: 'stockpile-menu' })
   async handleStockpileSelect(interaction: StringSelectMenuInteraction) {
-    await interaction.deferReply();
+    const location = interaction.values[0]
+
+    const modal = new ModalBuilder().setTitle('Enter Stockpile Code').setCustomId('stockpile-code')
+    const stockpileCodeInputComponent = new TextInputBuilder()
+      .setCustomId('stockpile-code-input')
+      .setLabel('Enter stockpile code')
+      .setStyle(TextInputStyle.Short)
+      .setMinLength(6)
+      .setMaxLength(6)
+    const actionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
+      stockpileCodeInputComponent,
+    )
+    modal.addComponents(actionRow)
+    interaction.showModal(modal)
+
+    const submission = await interaction.awaitModalSubmit({
+      time: 60000,
+      filter: (i) => i.user.id === interaction.user.id,
+    })
+    const stockpileCode = submission.fields.fields.get('stockpile-code-input')?.value
+
+    await this.stockpileDataService.addStockpile(interaction.guildId, location, stockpileCode)
   }
 
-  // @SelectMenuComponent({ id: "hex-menu" })
-  // async handleHexSelect(interaction: StringSelectMenuInteraction) {
-  //   console.log("Handling hex select");
-  //   const hexValue = interaction.values?.[0];
-  //   console.log("Hex value", hexValue);
+  @ModalComponent({ id: 'stockpile-code' })
+  async handleStockpileCodeModal(interaction: ModalSubmitInteraction) {
+    if (!interaction?.guildId) return
 
-  //   if (!hexValue) {
-  //     return interaction.followUp("No hex selected");
-  //   }
+    const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(interaction.guildId)
 
-  //   const stockpileMenu = new StringSelectMenuBuilder()
-  //     .addOptions([{ label: "Kirknel Seaport", value: "ks" }])
-  //     .setCustomId("stockpile-menu")
-  //     .setPlaceholder("Select a stockpile");
+    if (!stockpiles) {
+      await interaction.reply({
+        content: 'No stockpiles have been added',
+        ephemeral: true,
+        fetchReply: true,
+      })
+      return
+    }
 
-  //   const actionRow =
-  //     new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-  //       stockpileMenu
-  //     );
+    const stockpileFields = Object.keys(stockpiles).map((hex) => {
+      return {
+        name: hex,
+        value: stockpiles[hex]
+          .map((stockpile) => `${stockpile.name} - ${stockpile.storageType} - ${stockpile.code}`)
+          .join('\n'),
+      }
+    })
 
-  //   // await interaction.deferReply();
+    const stockpilesEmbed = new EmbedBuilder()
+      .setColor(0x00ff00)
+      .setTitle('Stockpiles')
+      .addFields(stockpileFields)
+      .setTimestamp()
 
-  //   interaction.reply({
-  //     components: [actionRow],
-  //     content: "Select a stockpile",
-  //     ephemeral: true,
-  //   });
-  // }
-
-  // @SelectMenuComponent({ id: "stockpile-menu" })
-  // async handleStockpileSelect(interaction: StringSelectMenuInteraction) {
-  //   console.log("Handling stockpile select");
-  //   // await interaction.deferReply();
-  //   // interaction.followUp("Blah blah blah");
-  //   const stockpileValue = interaction.values?.[0];
-  //   console.log("Stockpile value", stockpileValue);
-  //   const modal = new ModalBuilder()
-  //     .setTitle("Enter Stockpile Code")
-  //     .setCustomId("stockpile-code");
-  //   const stockpileCodeInputComponent = new TextInputBuilder()
-  //     .setCustomId("stockpile-code-input")
-  //     .setPlaceholder("Enter stockpile code")
-  //     .setStyle(TextInputStyle.Short);
-  //   const actionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-  //     stockpileCodeInputComponent
-  //   );
-  //   modal.addComponents(actionRow);
-  //   // interaction.showModal(modal);
-  // }
-
-  // @ModalComponent({ id: "stockpile-code" })
-  // async handleModal(interaction: ModalSubmitInteraction) {
-  //   await interaction.reply("Stockpile asdfasdfadded");
-  //   return;
-  // }
+    await interaction.channel?.send({ embeds: [stockpilesEmbed] })
+    await interaction.reply({
+      content: 'Stockpile added',
+      ephemeral: true,
+      fetchReply: true,
+    })
+  }
 }

@@ -15,16 +15,9 @@ export class Example {
     [interaction]: ArgsOf<"interactionCreate">,
     client: Client
   ) {
-    if (interaction.isStringSelectMenu()) {
-      const message = await interaction.reply("Select a hex");
-      const collector = message.createMessageComponentCollector({
-        componentType: ComponentType.StringSelect,
-        maxComponents: 2,
-      });
-      collector.on("collect", (interaction) => {
-        console.log("Collected", interaction.values);
-      });
-    }
+    // if (interaction.isModalSubmit()) {
+    //   console.log(interaction.fields.fields.get("stockpile-code-input"));
+    // }
     client.executeInteraction(interaction);
   }
 
