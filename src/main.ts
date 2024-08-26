@@ -1,11 +1,13 @@
-import { dirname, importx } from "@discordx/importer";
-import { IntentsBitField } from "discord.js";
-import { ArgsOf, Client, Discord, Once } from "discordx";
+import 'dotenv/config'
+
+import { dirname, importx } from '@discordx/importer'
+import { IntentsBitField } from 'discord.js'
+import { ArgsOf, Client, Discord, Once } from 'discordx'
 
 @Discord()
 class FSB {
   bot = new Client({
-    botId: "fsb",
+    botId: 'fsb',
     // To use only guild command
     // botGuilds: [(client) => client.guilds.cache.map((guild) => guild.id)],
 
@@ -23,12 +25,12 @@ class FSB {
 
     // Configuration for @SimpleCommand
     simpleCommand: {
-      prefix: "!",
+      prefix: '!',
     },
-  });
+  })
 
-  @Once({ event: "ready" })
-  async onReady([...args]: ArgsOf<"ready">, bot: Client) {
+  @Once({ event: 'ready' })
+  async onReady([...args]: ArgsOf<'ready'>, bot: Client) {
     // await bot.guilds.fetch();
 
     // To clear all guild commands, uncomment this line,
@@ -38,9 +40,9 @@ class FSB {
     // await bot.clearApplicationCommands(...bot.guilds.cache.map((g) => g.id));
 
     // Synchronize applications commands with Discord
-    void bot.initApplicationCommands();
+    void bot.initApplicationCommands()
 
-    console.log("Bot started");
+    console.log('Bot started')
   } // Make sure all guilds are cached
 
   async start() {
@@ -49,18 +51,18 @@ class FSB {
     // await importx(__dirname + "/{events,commands}/**/*.{ts,js}");
 
     // The following syntax should be used in the ECMAScript environment
-    await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
+    await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`)
 
     // Let's start the bot
     if (!process.env.BOT_TOKEN) {
-      throw Error("Could not find BOT_TOKEN in your environment");
+      throw Error('Could not find BOT_TOKEN in your environment')
     }
 
     // Log in with your bot token
-    await this.bot.login(process.env.BOT_TOKEN);
+    await this.bot.login(process.env.BOT_TOKEN)
 
-    console.log("Bot logged in");
+    console.log('Bot logged in')
   }
 }
 
-new FSB().start();
+new FSB().start()

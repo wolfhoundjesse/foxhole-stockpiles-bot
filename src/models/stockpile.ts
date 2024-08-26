@@ -5,6 +5,9 @@ export type StorageLocation = {
 
 export type Stockpile = StorageLocation & {
   code: string
+  stockpileId: string
+  createdBy: string // discord user id
+  createdAt: string
 }
 
 export type StorageType = 'Storage Depot' | 'Seaport'

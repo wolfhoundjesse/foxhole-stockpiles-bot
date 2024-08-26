@@ -48,6 +48,8 @@ export class StockpileDataService {
   }
 
   public async updateLocationsManifest(manual = false): Promise<void> {
+    this.stockpilesByGuildIdDb.data = {}
+    await this.stockpilesByGuildIdDb.write()
     await this.manifestDb.read()
     const lastUpdate = new Date(this.manifestDb.data?.updatedAt || 0)
     if (!manual && differenceInMinutes(new Date(), lastUpdate) < 15) return
@@ -124,7 +126,7 @@ export class StockpileDataService {
     await this.manifestDb.write()
   }
 
-  public async getStockpileLocations() {
+  public async getStorageLocationsByRegion() {
     this.manifestDb.read()
     if (!this.manifestDb.data?.storageLocationsByRegion) {
       await this.updateLocationsManifest()
@@ -144,14 +146,27 @@ export class StockpileDataService {
     return stockpilesByGuildId[guildId]
   }
 
-  public async addStockpile(guildId: string | null, location: string, code?: string) {
+  public async addStockpile(
+    guildId: string | null,
+    location: string,
+    code: string,
+    stockpileId: string,
+    createdBy: string,
+  ) {
     await this.stockpilesByGuildIdDb.read()
 
     if (!guildId || !code) return
     const hex = location.split(':')[0]
     const locationName = location.split(':')[1].split(' - ')[0].trim()
     const storageType = location.split(':')[1].split(' - ')[1] as StorageType
-    const stockpile = { name: locationName, storageType, code }
+    const stockpile = {
+      name: locationName,
+      storageType,
+      code,
+      stockpileId,
+      createdBy,
+      createdAt: new Date().toISOString(),
+    }
 
     const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
     if (!stockpilesByGuildId) {

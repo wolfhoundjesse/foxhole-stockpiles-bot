@@ -25,12 +25,12 @@ export class AddStockpile {
 
   @Slash({ description: 'Add a stockpile', name: 'add-stockpile' })
   async addStockpile(interaction: CommandInteraction) {
-    const stockpileLocations = await this.stockpileDataService.getStockpileLocations()
+    const storageLocationsByRegion = await this.stockpileDataService.getStorageLocationsByRegion()
     const hexSelectMenu = new StringSelectMenuBuilder()
       .setCustomId('hex-menu')
       .setPlaceholder('Region/Hex')
       .addOptions(
-        Object.keys(stockpileLocations).map((key) => {
+        Object.keys(storageLocationsByRegion).map((key) => {
           return new StringSelectMenuOptionBuilder().setLabel(key).setValue(key)
         }),
       )
@@ -64,19 +64,19 @@ export class AddStockpile {
 
     const hexRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(updatedHexMenu)
 
-    const stockpileLocations = await this.stockpileDataService.getStockpileLocations()
+    const storageLocationsByRegion = await this.stockpileDataService.getStorageLocationsByRegion()
 
-    if (!stockpileLocations) {
+    if (!storageLocationsByRegion) {
       await interaction.update({
         components: [hexRow],
         fetchReply: true,
       })
       return
     }
-    const stockpileOptions = Object.keys(stockpileLocations)
+    const stockpileOptions = Object.keys(storageLocationsByRegion)
       .filter((hex) => hex === hexValue)
       .map((hex) => {
-        return stockpileLocations[hex].map((stockpile) => {
+        return storageLocationsByRegion[hex].map((stockpile) => {
           const location = `${stockpile.name} - ${stockpile.storageType}`
           return new StringSelectMenuOptionBuilder()
             .setLabel(location)
@@ -104,16 +104,26 @@ export class AddStockpile {
     const location = interaction.values[0]
 
     const modal = new ModalBuilder().setTitle('Enter Stockpile Code').setCustomId('stockpile-code')
+
     const stockpileCodeInputComponent = new TextInputBuilder()
       .setCustomId('stockpile-code-input')
       .setLabel('Enter stockpile code')
       .setStyle(TextInputStyle.Short)
       .setMinLength(6)
       .setMaxLength(6)
-    const actionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
+      .setRequired(true)
+
+    const stockpileIdInputComponent = new TextInputBuilder()
+      .setCustomId('stockpile-id-input')
+      .setLabel(`Enter stockpile ID (default is ${process.env.DEFAULT_STOCKPILE_ID})`)
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false)
+
+    const codeRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
       stockpileCodeInputComponent,
     )
-    modal.addComponents(actionRow)
+    const idRow = new ActionRowBuilder<TextInputBuilder>().addComponents(stockpileIdInputComponent)
+    modal.addComponents(codeRow, idRow)
     interaction.showModal(modal)
 
     const submission = await interaction.awaitModalSubmit({
@@ -121,30 +131,40 @@ export class AddStockpile {
       filter: (i) => i.user.id === interaction.user.id,
     })
     const stockpileCode = submission.fields.fields.get('stockpile-code-input')?.value
+    const stockpileId =
+      submission.fields.fields.get('stockpile-id-input')?.value || process.env.DEFAULT_STOCKPILE_ID
+    if (!stockpileCode || !stockpileId) {
+      throw new Error('Stockpile code is required') // Unconfigured DEFAULT_STOCKPILE_ID is handled elsewhere
+    }
 
-    await this.stockpileDataService.addStockpile(interaction.guildId, location, stockpileCode)
+    await this.stockpileDataService.addStockpile(
+      interaction.guildId,
+      location,
+      stockpileCode,
+      stockpileId,
+      interaction.user.id,
+    )
   }
 
   @ModalComponent({ id: 'stockpile-code' })
   async handleStockpileCodeModal(interaction: ModalSubmitInteraction) {
     if (!interaction?.guildId) return
+    await interaction.deferReply()
 
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(interaction.guildId)
 
     if (!stockpiles) {
-      await interaction.reply({
-        content: 'No stockpiles have been added',
-        ephemeral: true,
-        fetchReply: true,
-      })
-      return
+      throw new Error('No stockpiles found')
     }
 
     const stockpileFields = Object.keys(stockpiles).map((hex) => {
       return {
         name: hex,
         value: stockpiles[hex]
-          .map((stockpile) => `${stockpile.name} - ${stockpile.storageType} - ${stockpile.code}`)
+          .map(
+            (stockpile) =>
+              `${stockpile.name} - ${stockpile.storageType} - ${stockpile.stockpileId} - ${stockpile.code}`,
+          )
           .join('\n'),
       }
     })
@@ -156,10 +176,8 @@ export class AddStockpile {
       .setTimestamp()
 
     await interaction.channel?.send({ embeds: [stockpilesEmbed] })
-    await interaction.reply({
+    await interaction.editReply({
       content: 'Stockpile added',
-      ephemeral: true,
-      fetchReply: true,
     })
   }
 }
