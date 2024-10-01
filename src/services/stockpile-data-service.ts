@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { Collection } from 'discord.js'
-import {
+import type {
   Stockpile,
   MapTextItem,
   MapItem,
@@ -231,7 +231,7 @@ export class StockpileDataService {
     hex: string,
     id: string,
     code: string,
-    stockpileId = process.env.DEFAULT_STOCKPILE_ID,
+    stockpileId = process.env.DEFAULT_STOCKPILE_NAME,
     createdBy: string,
   ) {
     await this.stockpilesByGuildIdDb.read()
