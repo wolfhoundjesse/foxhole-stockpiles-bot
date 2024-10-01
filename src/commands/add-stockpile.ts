@@ -27,7 +27,7 @@ export class AddStockpile {
   async addStockpile(interaction: CommandInteraction) {
     const storageLocationsByRegion = await this.stockpileDataService.getStorageLocationsByRegion()
     const hexSelectMenu = new StringSelectMenuBuilder()
-      .setCustomId('hex-menu')
+      .setCustomId('add/hex-menu')
       .setPlaceholder('Region/Hex')
       .addOptions(
         Object.keys(storageLocationsByRegion).map((key) => {
@@ -36,7 +36,7 @@ export class AddStockpile {
       )
 
     const stockpileMenu = new StringSelectMenuBuilder()
-      .setCustomId('stockpile-menu')
+      .setCustomId('add/stockpile-menu')
       .setPlaceholder('Select a stockpile')
       .addOptions([{ label: "It's Disabled", value: "And Doesn't Matter" }])
       .setDisabled(true)
@@ -53,11 +53,11 @@ export class AddStockpile {
     })
   }
 
-  @SelectMenuComponent({ id: 'hex-menu' })
+  @SelectMenuComponent({ id: 'add/hex-menu' })
   async handleHexSelect(interaction: StringSelectMenuInteraction) {
     const hexValue = interaction.values[0]
     const updatedHexMenu = new StringSelectMenuBuilder()
-      .setCustomId('hex-menu')
+      .setCustomId('add/hex-menu')
       .setPlaceholder('Select a hex')
       .setDisabled(true)
       .setOptions([{ label: hexValue, value: hexValue, default: true }])
@@ -77,7 +77,7 @@ export class AddStockpile {
       .filter((hex) => hex === hexValue)
       .map((hex) => {
         return storageLocationsByRegion[hex].map((stockpile) => {
-          const location = `${stockpile.name} - ${stockpile.storageType}`
+          const location = `${stockpile.locationName} - ${stockpile.storageType}`
           return new StringSelectMenuOptionBuilder()
             .setLabel(location)
             .setValue(`${hex}: ${location}`)
@@ -86,7 +86,7 @@ export class AddStockpile {
       .flat()
 
     const stockpileMenu = new StringSelectMenuBuilder()
-      .setCustomId('stockpile-menu')
+      .setCustomId('add/stockpile-menu')
       .setPlaceholder('Select a stockpile')
       .addOptions(stockpileOptions)
 
@@ -99,14 +99,16 @@ export class AddStockpile {
     })
   }
 
-  @SelectMenuComponent({ id: 'stockpile-menu' })
+  @SelectMenuComponent({ id: 'add/stockpile-menu' })
   async handleStockpileSelect(interaction: StringSelectMenuInteraction) {
     const location = interaction.values[0]
 
-    const modal = new ModalBuilder().setTitle('Enter Stockpile Code').setCustomId('stockpile-code')
+    const modal = new ModalBuilder()
+      .setTitle('Enter Stockpile Code')
+      .setCustomId('add/stockpile-code')
 
     const stockpileCodeInputComponent = new TextInputBuilder()
-      .setCustomId('stockpile-code-input')
+      .setCustomId('add/stockpile-code-input')
       .setLabel('Enter stockpile code')
       .setStyle(TextInputStyle.Short)
       .setMinLength(6)
@@ -114,7 +116,7 @@ export class AddStockpile {
       .setRequired(true)
 
     const stockpileIdInputComponent = new TextInputBuilder()
-      .setCustomId('stockpile-id-input')
+      .setCustomId('add/stockpile-id-input')
       .setLabel(`Enter stockpile ID (default is ${process.env.DEFAULT_STOCKPILE_ID})`)
       .setStyle(TextInputStyle.Short)
       .setRequired(false)
@@ -130,9 +132,10 @@ export class AddStockpile {
       time: 60000,
       filter: (i) => i.user.id === interaction.user.id,
     })
-    const stockpileCode = submission.fields.fields.get('stockpile-code-input')?.value
+    const stockpileCode = submission.fields.fields.get('add/stockpile-code-input')?.value
     const stockpileId =
-      submission.fields.fields.get('stockpile-id-input')?.value || process.env.DEFAULT_STOCKPILE_ID
+      submission.fields.fields.get('add/stockpile-id-input')?.value ||
+      process.env.DEFAULT_STOCKPILE_ID
     if (!stockpileCode || !stockpileId) {
       throw new Error('Stockpile code is required') // Unconfigured DEFAULT_STOCKPILE_ID is handled elsewhere
     }
@@ -146,9 +149,9 @@ export class AddStockpile {
     )
   }
 
-  @ModalComponent({ id: 'stockpile-code' })
+  @ModalComponent({ id: 'add/stockpile-code' })
   async handleStockpileCodeModal(interaction: ModalSubmitInteraction) {
-    if (!interaction?.guildId) return
+    if (!interaction?.guildId || !interaction?.channelId) return
     await interaction.deferReply()
 
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(interaction.guildId)
@@ -163,7 +166,7 @@ export class AddStockpile {
         value: stockpiles[hex]
           .map(
             (stockpile) =>
-              `${stockpile.name} - ${stockpile.storageType} - ${stockpile.stockpileId} - ${stockpile.code}`,
+              `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}`,
           )
           .join('\n'),
       }
@@ -175,9 +178,27 @@ export class AddStockpile {
       .addFields(stockpileFields)
       .setTimestamp()
 
-    await interaction.channel?.send({ embeds: [stockpilesEmbed] })
-    await interaction.editReply({
-      content: 'Stockpile added',
-    })
+    const embeddedMessage = await this.stockpileDataService.getEmbeddedMessageId(
+      interaction.guildId,
+    )
+    if (!embeddedMessage) {
+      const message = await interaction.channel?.send({ embeds: [stockpilesEmbed] })
+      if (!message) return
+      await this.stockpileDataService.saveEmbeddedMessageId(
+        interaction.guildId,
+        interaction.channelId,
+        message.id,
+      )
+    } else {
+      const msg = await interaction.channel?.messages.fetch(embeddedMessage.embeddedMessageId)
+      if (!msg) return
+      const stockpilesEmbed = EmbedBuilder.from(msg?.embeds[0])
+        .setColor(0x00ff00)
+        .setTitle('Stockpiles')
+        .addFields(stockpileFields)
+        .setTimestamp()
+
+      await msg?.edit({ embeds: [stockpilesEmbed] })
+    }
   }
 }
