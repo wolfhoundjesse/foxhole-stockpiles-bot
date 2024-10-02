@@ -24,3 +24,16 @@ export const SelectFactionIds = {
   WardenButton: 'faction_warden',
   ColonialButton: 'faction_colonial',
 } as const
+
+export const EditStockpileIds = {
+  StockpileSelect: 'edit/stockpile-select',
+  StockpileEditModal: 'edit/stockpile-edit-modal',
+  StockpileCodeInput: 'edit/stockpile-code-input',
+  StockpileNameInput: 'edit/stockpile-name-input',
+} as const
+
+export const DeleteStockpileIds = {
+  StockpileSelect: 'delete/stockpile-select',
+  ConfirmButton: 'delete/confirm-button',
+  CancelButton: 'delete/cancel-button',
+} as const

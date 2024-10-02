@@ -1,6 +1,11 @@
 import { Client, On, type ArgsOf } from 'discordx'
 import { Discord } from 'discordx'
-import { AddStockpileIds, SelectFactionIds } from '../models/constants'
+import {
+  AddStockpileIds,
+  EditStockpileIds,
+  DeleteStockpileIds,
+  SelectFactionIds,
+} from '../models/constants'
 
 @Discord()
 export class InteractionCreate {
@@ -21,9 +26,15 @@ export class InteractionCreate {
         await client.executeInteraction(interaction)
       } else if (interaction.customId === AddStockpileIds.StockpileMenu) {
         await client.executeInteraction(interaction)
+      } else if (interaction.customId === EditStockpileIds.StockpileSelect) {
+        await client.executeInteraction(interaction)
+      } else if (interaction.customId === DeleteStockpileIds.StockpileSelect) {
+        await client.executeInteraction(interaction)
       }
     } else if (interaction.isModalSubmit()) {
       if (interaction.customId === AddStockpileIds.StockpileDetails) {
+        await client.executeInteraction(interaction)
+      } else if (interaction.customId.startsWith(EditStockpileIds.StockpileEditModal)) {
         await client.executeInteraction(interaction)
       }
     } else if (interaction.isButton()) {
@@ -31,6 +42,11 @@ export class InteractionCreate {
       if (
         interaction.customId === SelectFactionIds.WardenButton ||
         interaction.customId === SelectFactionIds.ColonialButton
+      ) {
+        await client.executeInteraction(interaction)
+      } else if (
+        interaction.customId === DeleteStockpileIds.ConfirmButton ||
+        interaction.customId === DeleteStockpileIds.CancelButton
       ) {
         await client.executeInteraction(interaction)
       }

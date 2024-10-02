@@ -139,7 +139,7 @@ export class AddStockpile {
 
   // Handle modal submission (stockpile_modal)
   @ModalComponent({ id: AddStockpileIds.StockpileDetails })
-  async handleStockpileModal(interaction: ModalSubmitInteraction): Promise<void> {
+  async handleStockpileDetails(interaction: ModalSubmitInteraction): Promise<void> {
     const guildId = interaction.guildId
     if (!guildId) {
       await interaction.reply({
@@ -165,13 +165,21 @@ export class AddStockpile {
     }
 
     // Add the stockpile to the database
-    await this.stockpileDataService.addStockpile(
+    const success = await this.stockpileDataService.addStockpile(
       guildId,
       selectedStorageLocation,
       stockpileCode,
       stockpileName,
       interaction.user.id,
     )
+
+    if (!success) {
+      await interaction.reply({
+        content: `> 🚫 **Error:** A stockpile with the name "**${stockpileName}**" already exists in this location.\n> \n> ✏️ Please try again with a different name.`,
+        ephemeral: true,
+      })
+      return
+    }
 
     // Remove the stored location after use
     delete this.selectedLocations[interaction.user.id]

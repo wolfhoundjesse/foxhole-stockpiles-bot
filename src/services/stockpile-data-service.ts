@@ -234,19 +234,48 @@ export class StockpileDataService {
     return stockpilesByGuildId[guildId]
   }
 
+  private async isDuplicateStockpile(
+    guildId: string,
+    hex: string,
+    locationName: string,
+    stockpileName: string,
+    excludeId?: string,
+  ): Promise<boolean> {
+    await this.stockpilesByGuildIdDb.read()
+    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
+
+    if (!stockpilesByGuildId[guildId] || !stockpilesByGuildId[guildId][hex]) {
+      return false
+    }
+
+    return stockpilesByGuildId[guildId][hex].some(
+      (stockpile) =>
+        stockpile.locationName === locationName &&
+        stockpile.stockpileName === stockpileName &&
+        stockpile.id !== excludeId,
+    )
+  }
+
   public async addStockpile(
     guildId: string | null,
     location: string,
     code: string,
     stockpileName: string,
     createdBy: string,
-  ) {
+  ): Promise<boolean> {
     await this.stockpilesByGuildIdDb.read()
 
-    if (!guildId || !code) return
+    if (!guildId || !code) return false
     const hex = location.split(':')[0]
     const locationName = location.split(':')[1].split(' - ')[0].trim()
     const storageType = location.split(':')[1].split(' - ')[1] as StorageType
+
+    // Check for duplicate stockpile
+    const isDuplicate = await this.isDuplicateStockpile(guildId, hex, locationName, stockpileName)
+    if (isDuplicate) {
+      return false // Indicate that a duplicate was found
+    }
+
     const stockpile = {
       id: uuidv4(),
       locationName,
@@ -263,7 +292,7 @@ export class StockpileDataService {
         [guildId]: { [hex]: [stockpile] },
       }
       await this.stockpilesByGuildIdDb.write()
-      return
+      return true // Indicate successful addition
     }
 
     const stockpilesByRegion = stockpilesByGuildId[guildId]
@@ -272,7 +301,7 @@ export class StockpileDataService {
       stockpilesByGuildId[guildId] = { [hex]: [stockpile] }
       this.stockpilesByGuildIdDb.data = stockpilesByGuildId
       await this.stockpilesByGuildIdDb.write()
-      return
+      return true // Indicate successful addition
     }
 
     const stockpiles = stockpilesByRegion[hex]
@@ -282,7 +311,7 @@ export class StockpileDataService {
       stockpilesByGuildId[guildId] = stockpilesByRegion
       this.stockpilesByGuildIdDb.data = stockpilesByGuildId
       await this.stockpilesByGuildIdDb.write()
-      return
+      return true // Indicate successful addition
     }
 
     stockpiles.push(stockpile)
@@ -290,7 +319,7 @@ export class StockpileDataService {
     stockpilesByGuildId[guildId] = stockpilesByRegion
     this.stockpilesByGuildIdDb.data = stockpilesByGuildId
     await this.stockpilesByGuildIdDb.write()
-    return
+    return true // Indicate successful addition
   }
 
   public async getStockpileById(guildId: string, hex: string, stockpileId: string) {
@@ -306,21 +335,33 @@ export class StockpileDataService {
     hex: string,
     id: string,
     code: string,
-    stockpileId = process.env.DEFAULT_STOCKPILE_NAME,
+    stockpileName: string,
     createdBy: string,
-  ) {
+  ): Promise<boolean> {
     await this.stockpilesByGuildIdDb.read()
     const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
-    if (!guildId || !code) return
+    if (!guildId || !code) return false
 
     const currentStockpile = stockpilesByGuildId[guildId][hex].find(
       (stockpile) => stockpile.id === id,
     ) as Stockpile
 
+    // Check for duplicate stockpile, excluding the current stockpile being edited
+    const isDuplicate = await this.isDuplicateStockpile(
+      guildId,
+      hex,
+      currentStockpile.locationName,
+      stockpileName,
+      id,
+    )
+    if (isDuplicate) {
+      return false // Indicate that a duplicate was found
+    }
+
     const updatedStockpile = {
       ...currentStockpile,
       code,
-      stockpileId,
+      stockpileName,
       updatedBy: createdBy,
       updatedAt: new Date().toISOString(),
     }
@@ -331,22 +372,41 @@ export class StockpileDataService {
     )
     this.stockpilesByGuildIdDb.data = stockpilesByGuildId
     await this.stockpilesByGuildIdDb.write()
-    return
+    return true // Indicate successful edit
   }
 
-  public async deleteStockpile(guildId: string, id: string) {
+  public async deleteStockpile(
+    guildId: string,
+    id: string,
+  ): Promise<{ deletedStockpile: Stockpile | null; deletedFromHex: string }> {
     await this.stockpilesByGuildIdDb.read()
     const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
-    Object.keys(stockpilesByGuildId).forEach((guildId) => {
-      Object.keys(stockpilesByGuildId[guildId]).forEach((hex) => {
-        stockpilesByGuildId[guildId][hex] = stockpilesByGuildId[guildId][hex].filter(
-          (stockpile) => stockpile.id !== id,
-        )
-      })
+
+    let deletedStockpile: Stockpile | null = null
+    let deletedFromHex = ''
+
+    Object.keys(stockpilesByGuildId[guildId]).forEach((hex) => {
+      const filteredStockpiles = stockpilesByGuildId[guildId][hex].filter(
+        (stockpile) => stockpile.id !== id,
+      )
+
+      if (filteredStockpiles.length < stockpilesByGuildId[guildId][hex].length) {
+        deletedStockpile = stockpilesByGuildId[guildId][hex].find((s) => s.id === id) || null
+        deletedFromHex = hex
+
+        if (filteredStockpiles.length === 0) {
+          // If the region is now empty, remove it
+          delete stockpilesByGuildId[guildId][hex]
+        } else {
+          stockpilesByGuildId[guildId][hex] = filteredStockpiles
+        }
+      }
     })
+
     this.stockpilesByGuildIdDb.data = stockpilesByGuildId
     await this.stockpilesByGuildIdDb.write()
-    return
+
+    return { deletedStockpile, deletedFromHex }
   }
 
   private getDistance(point1: { x: number; y: number }, point2: { x: number; y: number }) {
