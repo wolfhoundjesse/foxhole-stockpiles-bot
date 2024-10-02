@@ -11,7 +11,7 @@ export type FactionsByGuildId = {
 }
 
 export const FactionColors = {
-  [Faction.Wardens]: 0x0000ff,
-  [Faction.Colonials]: 0x00ff00,
+  [Faction.Wardens]: 0x235683,
+  [Faction.Colonials]: 0x516c4b,
   [Faction.None]: 0xffffff,
 } as const
