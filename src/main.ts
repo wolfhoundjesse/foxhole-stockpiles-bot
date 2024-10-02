@@ -15,6 +15,8 @@ async function run() {
       IntentsBitField.Flags.GuildVoiceStates,
     ],
 
+    botGuilds: [(client) => client.guilds.cache.map((guild) => guild.id)],
+
     // Debug logs are disabled in silent mode
     silent: false,
 

@@ -1,6 +1,6 @@
 import { Client, On, type ArgsOf } from 'discordx'
 import { Discord } from 'discordx'
-import { AddStockpileIds } from '../models/constants'
+import { AddStockpileIds, SelectFactionIds } from '../models/constants'
 
 @Discord()
 export class InteractionCreate {
@@ -23,7 +23,15 @@ export class InteractionCreate {
         await client.executeInteraction(interaction)
       }
     } else if (interaction.isModalSubmit()) {
-      if (interaction.customId === AddStockpileIds.StockpileCode) {
+      if (interaction.customId === AddStockpileIds.StockpileDetails) {
+        await client.executeInteraction(interaction)
+      }
+    } else if (interaction.isButton()) {
+      // Handle faction selection buttons
+      if (
+        interaction.customId === SelectFactionIds.WardenButton ||
+        interaction.customId === SelectFactionIds.ColonialButton
+      ) {
         await client.executeInteraction(interaction)
       }
     }

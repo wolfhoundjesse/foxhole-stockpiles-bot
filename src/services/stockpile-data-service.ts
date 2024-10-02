@@ -1,21 +1,23 @@
-import path from 'node:path'
-import { Collection } from 'discord.js'
-import type {
-  Stockpile,
-  MapTextItem,
-  MapItem,
-  StorageLocation,
-  StorageType,
-  LocationsManifest,
-  StockpilesByGuildId,
-  StorageLocationsByRegion,
-} from '../models'
-import { Discord } from 'discordx'
-import { dirname, importx } from '@discordx/importer'
-import { Low } from 'lowdb'
-import { JSONFile, JSONFilePreset } from 'lowdb/node'
+import { dirname } from '@discordx/importer'
 import { differenceInMinutes } from 'date-fns'
+import { Discord } from 'discordx'
+import { Low } from 'lowdb'
+import { JSONFile } from 'lowdb/node'
+import path from 'node:path'
 import { v4 as uuidv4 } from 'uuid'
+import type {
+  FactionsByGuildId,
+  FactionType,
+  LocationsManifest,
+  MapItem,
+  MapTextItem,
+  Stockpile,
+  StockpilesByGuildId,
+  StorageLocation,
+  StorageLocationsByRegion,
+  StorageType,
+} from '../models'
+import { Faction } from '../models'
 
 type EmbedsByGuildId = {
   [guildId: string]: {
@@ -31,17 +33,20 @@ export class StockpileDataService {
     `https://war-service-live.foxholeservices.com/api/worldconquest/maps/${map}/dynamic/public`
   private staticMapUrl = (map: string) =>
     `https://war-service-live.foxholeservices.com/api/worldconquest/maps/${map}/static`
+  private warDataUrl = 'https://war-service-live.foxholeservices.com/api/worldconquest/war'
 
-  private readonly defaultManifestData: LocationsManifest = {
+  private readonly defaultLocationsManifestData: LocationsManifest = {
+    warNumber: 0,
     updatedAt: '',
-    storageLocationsByRegion: {},
+    COLONIALS: {},
+    WARDENS: {},
   }
-  private readonly manifestAdapter = new JSONFile<LocationsManifest>(
+  private readonly locationsManifestAdapter = new JSONFile<LocationsManifest>(
     path.join(dirname(import.meta.url), '..', '..', 'data', 'locations-manifest.json'),
   )
-  private readonly manifestDb = new Low<LocationsManifest>(
-    this.manifestAdapter,
-    this.defaultManifestData,
+  private readonly locationsManifestDb = new Low<LocationsManifest>(
+    this.locationsManifestAdapter,
+    this.defaultLocationsManifestData,
   )
   private readonly defaultStockpilesByGuildId: StockpilesByGuildId = {}
   private readonly stockpilesByGuildIdAdapter = new JSONFile<StockpilesByGuildId>(
@@ -56,29 +61,38 @@ export class StockpileDataService {
   )
   private readonly embedsByGuildIdDb = new Low<EmbedsByGuildId>(this.embedsByGuildIdAdapter, {})
 
+  private readonly factionsByGuildIdAdapter = new JSONFile<FactionsByGuildId>(
+    path.join(dirname(import.meta.url), '..', '..', 'data', 'factions-by-guild-id.json'),
+  )
+  private readonly factionsByGuildIdDb = new Low<FactionsByGuildId>(
+    this.factionsByGuildIdAdapter,
+    {},
+  )
+
   constructor() {
     this.updateLocationsManifest()
   }
 
   public async updateLocationsManifest(manual = false): Promise<void> {
-    // this.stockpilesByGuildIdDb.data = {}
-    // await this.stockpilesByGuildIdDb.write()
-    await this.manifestDb.read()
-    const lastUpdate = new Date(this.manifestDb.data?.updatedAt || 0)
+    await this.locationsManifestDb.read()
+    const lastUpdate = new Date(this.locationsManifestDb.data?.updatedAt || 0)
     if (!manual && differenceInMinutes(new Date(), lastUpdate) < 15) return
     if (manual && differenceInMinutes(new Date(), lastUpdate) < 1) return
-    let storageLocations = {} as StorageLocationsByRegion
+    let colonialStorageLocations = {} as StorageLocationsByRegion
+    let wardenStorageLocations = {} as StorageLocationsByRegion
     const response = await fetch(this.mapNamesUrl)
     const mapNames = await response.json()
 
     let mapTextItems: MapTextItem[] = []
-    let mapItems: (MapItem & { hex: string })[] = []
-
+    let colonialMapItems: (MapItem & { hex: string })[] = []
+    let wardenMapItems: (MapItem & { hex: string })[] = []
     // Helper function to fetch and parse JSON
     const fetchJson = async (url: string) => {
       const response = await fetch(url)
       return response.json()
     }
+
+    const warData = await fetchJson(this.warDataUrl)
 
     for (const mapName of mapNames) {
       const hex = this.sanitizeMapName(mapName)
@@ -96,65 +110,126 @@ export class StockpileDataService {
       }))
       mapTextItems.push(...staticMapTextItems)
 
-      // Process dynamic map items
-      const filteredDynamicMapItems = dynamicMap.mapItems
+      // Process colonial dynamic map items
+      const colonialDynamicMapItems = dynamicMap.mapItems
         .filter(
           (item: MapItem) =>
-            item.teamId === 'WARDENS' && (item.iconType === 33 || item.iconType === 52),
+            item.teamId === Faction.Colonials && (item.iconType === 33 || item.iconType === 52),
         )
         .map((item: MapItem) => ({
           ...item,
           hex,
         }))
-      mapItems.push(...filteredDynamicMapItems)
+      colonialMapItems.push(...colonialDynamicMapItems)
 
-      // Process named locations
-      const namedLocations: StorageLocation[] = filteredDynamicMapItems.map((mapItem: MapItem) => {
-        const locationName = mapTextItems
-          .filter((item) => item.hex === mapItem.hex)
-          .sort((a, z) => {
-            const distanceA = this.getDistance(a, mapItem)
-            const distanceZ = this.getDistance(z, mapItem)
-            return distanceA - distanceZ
-          })
-          .at(0)?.text as string
-        const storageType = mapItem.iconType === 33 ? 'Storage Depot' : 'Seaport'
+      // Process warden dynamic map items
+      const wardenDynamicMapItems = dynamicMap.mapItems
+        .filter(
+          (item: MapItem) =>
+            item.teamId === Faction.Wardens && (item.iconType === 33 || item.iconType === 52),
+        )
+        .map((item: MapItem) => ({
+          ...item,
+          hex,
+        }))
+      wardenMapItems.push(...wardenDynamicMapItems)
 
-        return { locationName, storageType }
-      })
+      // Process colonial named locations
+      const colonialNamedLocations: StorageLocation[] = colonialDynamicMapItems.map(
+        (mapItem: MapItem) => {
+          const locationName = mapTextItems
+            .filter((item) => item.hex === mapItem.hex)
+            .sort((a, z) => {
+              const distanceA = this.getDistance(a, mapItem)
+              const distanceZ = this.getDistance(z, mapItem)
+              return distanceA - distanceZ
+            })
+            .at(0)?.text as string
+          const storageType = mapItem.iconType === 33 ? 'Storage Depot' : 'Seaport'
 
-      if (namedLocations.length > 0) {
-        storageLocations[hex] = namedLocations
+          return { locationName, storageType }
+        },
+      )
+
+      if (colonialNamedLocations.length > 0) {
+        colonialStorageLocations[hex] = colonialNamedLocations
+      }
+
+      const wardenNamedLocations: StorageLocation[] = wardenDynamicMapItems.map(
+        (mapItem: MapItem) => {
+          const locationName = mapTextItems
+            .filter((item) => item.hex === mapItem.hex)
+            .sort((a, z) => {
+              const distanceA = this.getDistance(a, mapItem)
+              const distanceZ = this.getDistance(z, mapItem)
+              return distanceA - distanceZ
+            })
+            .at(0)?.text as string
+          const storageType = mapItem.iconType === 33 ? 'Storage Depot' : 'Seaport'
+
+          return { locationName, storageType }
+        },
+      )
+
+      if (wardenNamedLocations.length > 0) {
+        wardenStorageLocations[hex] = wardenNamedLocations
       }
     }
 
-    storageLocations = Object.fromEntries(
-      Object.entries(storageLocations).sort(([a], [b]) => a.localeCompare(b)),
+    colonialStorageLocations = Object.fromEntries(
+      Object.entries(colonialStorageLocations).sort(([a], [b]) => a.localeCompare(b)),
+    )
+    wardenStorageLocations = Object.fromEntries(
+      Object.entries(wardenStorageLocations).sort(([a], [b]) => a.localeCompare(b)),
     )
 
-    this.manifestDb.data = {
+    this.locationsManifestDb.data = {
+      warNumber: warData.warNumber,
       updatedAt: new Date().toISOString(),
-      storageLocationsByRegion: storageLocations,
+      COLONIALS: colonialStorageLocations,
+      WARDENS: wardenStorageLocations,
     }
-    await this.manifestDb.write()
+    await this.locationsManifestDb.write()
   }
 
-  public async getStorageLocationsByRegion() {
-    this.manifestDb.read()
-    if (!this.manifestDb.data?.storageLocationsByRegion) {
+  public async setFactionByGuildId(guildId: string, faction: FactionType) {
+    await this.factionsByGuildIdDb.read()
+    const factionsByGuildId = this.factionsByGuildIdDb.data
+    factionsByGuildId[guildId] = faction
+    this.factionsByGuildIdDb.data = factionsByGuildId
+    await this.factionsByGuildIdDb.write()
+    return
+  }
+
+  public async getFactionByGuildId(guildId: string) {
+    await this.factionsByGuildIdDb.read()
+    const factionsByGuildId = this.factionsByGuildIdDb.data
+    return factionsByGuildId[guildId] || Faction.None
+  }
+
+  public async getWarNumber() {
+    await this.locationsManifestDb.read()
+    return this.locationsManifestDb.data?.warNumber || 0
+  }
+
+  public async getStorageLocationsByRegion(
+    faction: Exclude<FactionType, 'NONE'>,
+  ): Promise<StorageLocationsByRegion> {
+    await this.locationsManifestDb.read()
+    if (!this.locationsManifestDb.data) {
       await this.updateLocationsManifest()
     }
-    return this.manifestDb.data?.storageLocationsByRegion
+    return this.locationsManifestDb.data[faction]
   }
 
   public async broadcastManifestChanges() {}
 
   public async getStockpilesByGuildId(guildId: string | null) {
-    if (!guildId) return
+    if (!guildId) return {}
     await this.stockpilesByGuildIdDb.read()
     const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
-    if (!stockpilesByGuildId) return
-    if (!stockpilesByGuildId[guildId]) return
+    if (!stockpilesByGuildId) return {}
+    if (!stockpilesByGuildId[guildId]) return {}
 
     return stockpilesByGuildId[guildId]
   }
@@ -187,7 +262,7 @@ export class StockpileDataService {
       this.stockpilesByGuildIdDb.data = {
         [guildId]: { [hex]: [stockpile] },
       }
-      this.stockpilesByGuildIdDb.write()
+      await this.stockpilesByGuildIdDb.write()
       return
     }
 
@@ -196,7 +271,7 @@ export class StockpileDataService {
     if (!stockpilesByRegion) {
       stockpilesByGuildId[guildId] = { [hex]: [stockpile] }
       this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-      this.stockpilesByGuildIdDb.write()
+      await this.stockpilesByGuildIdDb.write()
       return
     }
 
@@ -206,7 +281,7 @@ export class StockpileDataService {
       stockpilesByRegion[hex] = [stockpile]
       stockpilesByGuildId[guildId] = stockpilesByRegion
       this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-      this.stockpilesByGuildIdDb.write()
+      await this.stockpilesByGuildIdDb.write()
       return
     }
 
@@ -214,7 +289,7 @@ export class StockpileDataService {
     stockpilesByRegion[hex] = stockpiles
     stockpilesByGuildId[guildId] = stockpilesByRegion
     this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-    this.stockpilesByGuildIdDb.write()
+    await this.stockpilesByGuildIdDb.write()
     return
   }
 
@@ -255,7 +330,7 @@ export class StockpileDataService {
       stockpile.id === id ? updatedStockpile : stockpile,
     )
     this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-    this.stockpilesByGuildIdDb.write()
+    await this.stockpilesByGuildIdDb.write()
     return
   }
 
@@ -270,7 +345,7 @@ export class StockpileDataService {
       })
     })
     this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-    this.stockpilesByGuildIdDb.write()
+    await this.stockpilesByGuildIdDb.write()
     return
   }
 
@@ -293,13 +368,13 @@ export class StockpileDataService {
     const embedsByGuildId = this.embedsByGuildIdDb.data
     embedsByGuildId[guildId] = { channelId, embeddedMessageId }
     this.embedsByGuildIdDb.data = embedsByGuildId
-    this.embedsByGuildIdDb.write()
+    await this.embedsByGuildIdDb.write()
     return
   }
 
-  public async getEmbeddedMessageId(guildId: string) {
+  public async getEmbedsByGuildId(guildId: string) {
     await this.embedsByGuildIdDb.read()
     const embedsByGuildId = this.embedsByGuildIdDb.data
-    return embedsByGuildId[guildId]
+    return embedsByGuildId[guildId] || {}
   }
 }

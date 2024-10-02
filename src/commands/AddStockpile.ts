@@ -1,4 +1,4 @@
-import { Discord, ModalComponent, SelectMenuComponent, Slash, SlashOption } from 'discordx'
+import { Discord, ModalComponent, SelectMenuComponent, Slash } from 'discordx'
 import {
   CommandInteraction,
   ActionRowBuilder,
@@ -13,14 +13,21 @@ import {
 } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, AddStockpileIds } from '../models/constants'
+import { Faction, FactionColors, type FactionType } from '../models'
 
 @Discord()
 export class AddStockpile {
   public stockpileDataService = new StockpileDataService()
+  private selectedLocations: { [userId: string]: string } = {}
 
   @Slash({ description: 'Add a stockpile', name: Command.AddStockpile })
   async addStockpile(interaction: CommandInteraction): Promise<void> {
-    const storageLocationsByRegion = await this.stockpileDataService.getStorageLocationsByRegion()
+    const faction = await this.getFaction(interaction)
+    if (faction === Faction.None) {
+      return
+    }
+    const storageLocationsByRegion =
+      await this.stockpileDataService.getStorageLocationsByRegion(faction)
 
     const hexSelectMenu = new StringSelectMenuBuilder()
       .setCustomId(AddStockpileIds.HexMenu)
@@ -47,7 +54,7 @@ export class AddStockpile {
     )
 
     await interaction.reply({
-      content: 'Select a region/hex to add a stockpile to.',
+      content: 'Please select a storage location.',
       components: [hexRow, stockpileRow],
       ephemeral: true,
     })
@@ -56,7 +63,12 @@ export class AddStockpile {
   @SelectMenuComponent({ id: AddStockpileIds.HexMenu })
   async handleLocationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
     const selectedHex = interaction.values[0] // Get selected location
-    const storageLocationsByRegion = await this.stockpileDataService.getStorageLocationsByRegion()
+    const faction = await this.getFaction(interaction)
+    if (faction === Faction.None) {
+      return
+    }
+    const storageLocationsByRegion =
+      await this.stockpileDataService.getStorageLocationsByRegion(faction)
     const updatedHexMenu = new StringSelectMenuBuilder()
       .setCustomId(AddStockpileIds.HexMenu)
       .setPlaceholder('Select a hex')
@@ -98,7 +110,7 @@ export class AddStockpile {
   @SelectMenuComponent({ id: AddStockpileIds.StockpileMenu })
   async handleSublocationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
     const selectedStorageLocation = interaction.values[0] // Get selected sublocation
-
+    this.selectedLocations[interaction.user.id] = selectedStorageLocation
     // Present a modal to the user for stockpile code and name
     const modal = new ModalBuilder()
       .setTitle('Enter Stockpile Details')
@@ -128,32 +140,121 @@ export class AddStockpile {
   // Handle modal submission (stockpile_modal)
   @ModalComponent({ id: AddStockpileIds.StockpileDetails })
   async handleStockpileModal(interaction: ModalSubmitInteraction): Promise<void> {
-    const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(interaction.guildId)
-    const warNumber = 117
+    const guildId = interaction.guildId
+    if (!guildId) {
+      await interaction.reply({
+        content: 'This command can only be used in a server.',
+        ephemeral: true,
+      })
+      return
+    }
+
+    const stockpileCode = interaction.fields.getTextInputValue(AddStockpileIds.StockpileCodeInput)
+    const stockpileName =
+      interaction.fields.getTextInputValue(AddStockpileIds.StockpileNameInput) ||
+      (process.env.DEFAULT_STOCKPILE_NAME as string)
+    const selectedStorageLocation = this.selectedLocations[interaction.user.id]
+
+    if (!selectedStorageLocation) {
+      await interaction.reply({
+        content:
+          'Error: Could not retrieve the selected storage location. Please try the command again.',
+        ephemeral: true,
+      })
+      return
+    }
+
+    // Add the stockpile to the database
+    await this.stockpileDataService.addStockpile(
+      guildId,
+      selectedStorageLocation,
+      stockpileCode,
+      stockpileName,
+      interaction.user.id,
+    )
+
+    // Remove the stored location after use
+    delete this.selectedLocations[interaction.user.id]
+
+    // Create an embed with the stockpile details
+    const embed = await this.createStockpilesEmbed(guildId)
+    const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
+    const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
+    if (embeddedMessageExists) {
+      const channel = interaction.channel
+      if (channel) {
+        const message = await channel.messages.fetch(embedByGuildId.embeddedMessageId)
+        await message.edit({ embeds: [embed] })
+        await interaction.reply({ content: 'Stockpile list updated.', ephemeral: true })
+      }
+    }
+
+    if (!embeddedMessageExists) {
+      const message = await interaction.reply({
+        embeds: [embed],
+        fetchReply: true,
+      })
+      await this.stockpileDataService.saveEmbeddedMessageId(
+        guildId,
+        interaction.channelId || '',
+        message.id,
+      )
+    }
+  }
+
+  private async getFaction(
+    interaction: CommandInteraction | StringSelectMenuInteraction,
+  ): Promise<FactionType> {
+    const guildId = interaction.guildId
+    if (!guildId) {
+      await interaction.reply({
+        content: 'This command can only be used in a server.',
+        ephemeral: true,
+      })
+      return Faction.None
+    }
+    const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
+    if (faction === Faction.None) {
+      await interaction.reply({
+        content: 'You must select a faction before adding stockpiles. (use /select-faction)',
+        ephemeral: true,
+      })
+      return Faction.None
+    }
+    return faction
+  }
+
+  private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+    const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
+    const warNumber = await this.stockpileDataService.getWarNumber()
+    const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
+    const color = FactionColors[faction]
 
     if (!stockpiles) {
-      throw new Error('No stockpiles found')
+      return new EmbedBuilder()
+        .setTitle(`War ${warNumber} Stockpiles`)
+        .setColor(color)
+        .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
+        .setTimestamp()
     }
 
     const stockpileFields = Object.keys(stockpiles).map((hex) => {
       return {
         name: hex,
-        value: stockpiles[hex]
-          .map(
-            (stockpile) =>
-              `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}`,
-          )
-          .join('\n'),
+        value:
+          stockpiles[hex]
+            .map(
+              (stockpile) =>
+                `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}`,
+            )
+            .join('\n') || 'No stockpiles',
       }
     })
 
-    // Create an embed with the stockpile details
-    const embed = new EmbedBuilder()
-      .setTitle(`Stockpiles for war ${warNumber} (updated ${new Date().toLocaleString()})`)
-      .setColor(0x00ff00)
-      .setFields(stockpileFields)
+    return new EmbedBuilder()
+      .setTitle(`War ${warNumber} Stockpiles`)
+      .setColor(color)
+      .addFields(stockpileFields)
       .setTimestamp()
-
-    await interaction.reply({ embeds: [embed], ephemeral: false })
   }
 }

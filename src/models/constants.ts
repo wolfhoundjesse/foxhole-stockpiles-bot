@@ -2,6 +2,7 @@ export const RawCommand = {
   AddStockpile: 'add-stockpile',
   DeleteStockpile: 'delete-stockpile',
   EditStockpile: 'edit-stockpile',
+  SelectFaction: 'select-faction',
 } as const
 
 export type CommandType = {
@@ -16,4 +17,10 @@ export const AddStockpileIds = {
   StockpileDetails: 'add/stockpile-details',
   StockpileCodeInput: 'add/stockpile-code-input',
   StockpileNameInput: 'add/stockpile-name-input',
+  DismissButton: 'add/dismiss-button',
+} as const
+
+export const SelectFactionIds = {
+  WardenButton: 'faction_warden',
+  ColonialButton: 'faction_colonial',
 } as const

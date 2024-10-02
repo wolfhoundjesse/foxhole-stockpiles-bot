@@ -1,6 +1,8 @@
-import { StorageLocationsByRegion } from './stockpile'
+import type { StorageLocationsByRegion } from './stockpile'
 
 export type LocationsManifest = {
+  warNumber: number
   updatedAt: string
-  storageLocationsByRegion: StorageLocationsByRegion
+  COLONIALS: StorageLocationsByRegion
+  WARDENS: StorageLocationsByRegion
 }

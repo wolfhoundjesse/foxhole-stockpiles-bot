@@ -1,5 +1,6 @@
 export * from './constants'
 export * from './dynamic-map'
+export * from './faction'
 export * from './locations-manifest'
 export * from './map-item'
 export * from './map-text-item'
