@@ -414,6 +414,7 @@ export class StockpileDataService {
   }
 
   private sanitizeMapName(mapName: string): string {
+    if (mapName === 'MooringCountyHex') return 'The Moors'
     return mapName === 'MarbanHollow'
       ? mapName.replace(/([a-z])([A-Z])/g, '$1 $2')
       : mapName.slice(0, -3).replace(/([a-z])([A-Z])/g, '$1 $2')
