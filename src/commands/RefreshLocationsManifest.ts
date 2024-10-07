@@ -1,12 +1,10 @@
 import { Discord, Slash } from 'discordx'
 import { CommandInteraction } from 'discord.js'
-import { injectable } from 'tsyringe'
 import { StockpileDataService } from '../services/stockpile-data-service.js'
 
 @Discord()
-@injectable()
 export class RefreshLocationsManifest {
-  constructor(private stockpileDataService: StockpileDataService) {}
+  public stockpileDataService = new StockpileDataService()
 
   @Slash({
     name: 'refresh-manifest',
