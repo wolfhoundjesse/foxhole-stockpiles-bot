@@ -39,7 +39,7 @@ export class EditStockpile {
       const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
       const stockpileOptions = Object.entries(stockpiles).flatMap(([hex, stockpileList]) =>
         stockpileList.map((stockpile) => ({
-          label: `${hex} - ${stockpile.stockpileName}`,
+          label: `${hex} - ${stockpile.locationName} - ${stockpile.stockpileName}`,
           value: `${hex}:${stockpile.id}`,
         })),
       )
