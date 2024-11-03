@@ -3,6 +3,8 @@ export const RawCommand = {
   DeleteStockpile: 'delete-stockpile',
   EditStockpile: 'edit-stockpile',
   SelectFaction: 'select-faction',
+  RefreshManifest: 'refresh-manifest',
+  Help: 'help',
 } as const
 
 export type CommandType = {

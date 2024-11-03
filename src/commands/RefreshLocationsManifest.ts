@@ -2,13 +2,14 @@ import { Discord, Slash } from 'discordx'
 import { CommandInteraction } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service.js'
 import { checkBotPermissions } from '../utils/permissions.js'
+import { Command } from '../models'
 
 @Discord()
 export class RefreshLocationsManifest {
   public stockpileDataService = new StockpileDataService()
 
   @Slash({
-    name: 'refresh-manifest',
+    name: Command.RefreshManifest,
     description: 'Manually refresh the locations manifest',
   })
   async refreshManifest(interaction: CommandInteraction): Promise<void> {
