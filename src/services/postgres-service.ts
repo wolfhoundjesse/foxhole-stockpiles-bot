@@ -102,12 +102,14 @@ export class PostgresService {
     try {
       await client.query('BEGIN')
 
-      // Clear existing stockpiles
+      // ISSUE: Deleting all stockpiles is safe, but we need to ensure guild_id and region_hex exist
+      // before inserting new stockpiles
       await client.query('DELETE FROM stockpiles')
 
-      // Insert new stockpiles
+      // Need to verify guild_id exists in guilds table and hex exists in regions table
       for (const [guildId, regions] of Object.entries(data)) {
         for (const [hex, stockpiles] of Object.entries(regions)) {
+          // Should add verification queries here
           for (const stockpile of stockpiles) {
             const query = `
               INSERT INTO stockpiles (
@@ -127,6 +129,16 @@ export class PostgresService {
                 $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
               )
             `
+            const verifyQuery = `
+              SELECT g.guild_id, r.hex 
+              FROM guilds g 
+              CROSS JOIN regions r 
+              WHERE g.guild_id = $1 AND r.hex = $2
+            `
+            const verifyResult = await client.query(verifyQuery, [guildId, hex])
+            if (verifyResult.rows.length === 0) {
+              throw new Error(`Guild ${guildId} or region ${hex} does not exist`)
+            }
             await client.query(query, [
               stockpile.id,
               guildId,
@@ -174,10 +186,7 @@ export class PostgresService {
     try {
       await client.query('BEGIN')
 
-      // Clear existing factions
-      await client.query('DELETE FROM guilds')
-
-      // Insert new factions
+      // Instead of DELETE FROM guilds, use ON CONFLICT for each row
       for (const [guildId, faction] of Object.entries(data)) {
         const query = `
           INSERT INTO guilds (guild_id, faction)
