@@ -102,15 +102,33 @@ export class PostgresService {
     try {
       await client.query('BEGIN')
 
-      // ISSUE: Deleting all stockpiles is safe, but we need to ensure guild_id and region_hex exist
-      // before inserting new stockpiles
+      // Delete existing stockpiles
       await client.query('DELETE FROM stockpiles')
 
-      // Need to verify guild_id exists in guilds table and hex exists in regions table
       for (const [guildId, regions] of Object.entries(data)) {
+        // Ensure guild exists
+        await client.query(
+          `
+          INSERT INTO guilds (guild_id, faction)
+          VALUES ($1, 'NONE')  -- Default faction, can be updated later
+          ON CONFLICT (guild_id) DO NOTHING
+        `,
+          [guildId],
+        )
+
         for (const [hex, stockpiles] of Object.entries(regions)) {
-          // Should add verification queries here
+          // Ensure region exists
+          await client.query(
+            `
+            INSERT INTO regions (hex)
+            VALUES ($1)
+            ON CONFLICT (hex) DO NOTHING
+          `,
+            [hex],
+          )
+
           for (const stockpile of stockpiles) {
+            // Original stockpile insert query remains the same
             const query = `
               INSERT INTO stockpiles (
                 id,
@@ -125,20 +143,10 @@ export class PostgresService {
                 updated_by,
                 updated_at
               ) VALUES (
-                COALESCE($1, gen_random_uuid()),  -- Use provided ID or generate a new UUID
+                COALESCE($1, gen_random_uuid()),
                 $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
               )
             `
-            const verifyQuery = `
-              SELECT g.guild_id, r.hex 
-              FROM guilds g 
-              CROSS JOIN regions r 
-              WHERE g.guild_id = $1 AND r.hex = $2
-            `
-            const verifyResult = await client.query(verifyQuery, [guildId, hex])
-            if (verifyResult.rows.length === 0) {
-              throw new Error(`Guild ${guildId} or region ${hex} does not exist`)
-            }
             await client.query(query, [
               stockpile.id,
               guildId,
