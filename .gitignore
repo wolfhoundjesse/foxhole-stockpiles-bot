@@ -1,11 +1,28 @@
-# files
-.vscode
+# Environment variables
 .env
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# files
 .env.local
 package-lock.json
 yarn.lock
 
 # folders
-dist
-node_modules
 data

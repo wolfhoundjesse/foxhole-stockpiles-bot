@@ -12,6 +12,7 @@ import type {
 } from '../models'
 import { Faction } from '../models'
 import { JsonFileService } from './json-file-service'
+import { PostgresService } from './postgres-service'
 
 type EmbedsByGuildId = {
   [guildId: string]: {
@@ -29,10 +30,12 @@ export class StockpileDataService {
     `https://war-service-live.foxholeservices.com/api/worldconquest/maps/${map}/static`
   private warDataUrl = 'https://war-service-live.foxholeservices.com/api/worldconquest/war'
 
-  private readonly dataAccessService: JsonFileService
+  // private readonly dataAccessService: JsonFileService
+  private readonly dataAccessService: PostgresService
 
   constructor() {
-    this.dataAccessService = new JsonFileService()
+    // this.dataAccessService = new JsonFileService()
+    this.dataAccessService = new PostgresService()
     this.updateLocationsManifest()
   }
 
