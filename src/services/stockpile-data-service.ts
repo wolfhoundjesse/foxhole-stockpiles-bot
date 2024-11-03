@@ -29,15 +29,15 @@ export class StockpileDataService {
     `https://war-service-live.foxholeservices.com/api/worldconquest/maps/${map}/static`
   private warDataUrl = 'https://war-service-live.foxholeservices.com/api/worldconquest/war'
 
-  private readonly jsonFileService: JsonFileService
+  private readonly dataAccessService: JsonFileService
 
   constructor() {
-    this.jsonFileService = new JsonFileService()
+    this.dataAccessService = new JsonFileService()
     this.updateLocationsManifest()
   }
 
   public async updateLocationsManifest(manual = false): Promise<void> {
-    const manifest = await this.jsonFileService.getLocationsManifest()
+    const manifest = await this.dataAccessService.getLocationsManifest()
     const lastUpdate = new Date(manifest?.updatedAt || 0)
     if (!manual && differenceInMinutes(new Date(), lastUpdate) < 15) return
     if (manual && differenceInMinutes(new Date(), lastUpdate) < 1) return
@@ -146,7 +146,7 @@ export class StockpileDataService {
       Object.entries(wardenStorageLocations).sort(([a], [b]) => a.localeCompare(b)),
     )
 
-    await this.jsonFileService.saveLocationsManifest({
+    await this.dataAccessService.saveLocationsManifest({
       warNumber: warData.warNumber,
       updatedAt: new Date().toISOString(),
       COLONIALS: colonialStorageLocations,
@@ -155,25 +155,25 @@ export class StockpileDataService {
   }
 
   public async setFactionByGuildId(guildId: string, faction: FactionType) {
-    const factionsByGuildId = await this.jsonFileService.getFactionsByGuildId()
+    const factionsByGuildId = await this.dataAccessService.getFactionsByGuildId()
     factionsByGuildId[guildId] = faction
-    await this.jsonFileService.saveFactionsByGuildId(factionsByGuildId)
+    await this.dataAccessService.saveFactionsByGuildId(factionsByGuildId)
   }
 
   public async getFactionByGuildId(guildId: string) {
-    const factionsByGuildId = await this.jsonFileService.getFactionsByGuildId()
+    const factionsByGuildId = await this.dataAccessService.getFactionsByGuildId()
     return factionsByGuildId[guildId] || Faction.None
   }
 
   public async getWarNumber() {
-    const manifest = await this.jsonFileService.getLocationsManifest()
+    const manifest = await this.dataAccessService.getLocationsManifest()
     return manifest?.warNumber || 0
   }
 
   public async getStorageLocationsByRegion(
     faction: Exclude<FactionType, 'NONE'>,
   ): Promise<StorageLocationsByRegion> {
-    const manifest = await this.jsonFileService.getLocationsManifest()
+    const manifest = await this.dataAccessService.getLocationsManifest()
     if (!manifest) {
       await this.updateLocationsManifest()
     }
@@ -184,7 +184,7 @@ export class StockpileDataService {
 
   public async getStockpilesByGuildId(guildId: string | null) {
     if (!guildId) return {}
-    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
     if (!stockpilesByGuildId) return {}
     if (!stockpilesByGuildId[guildId]) return {}
 
@@ -198,7 +198,7 @@ export class StockpileDataService {
     stockpileName: string,
     excludeId?: string,
   ): Promise<boolean> {
-    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
 
     if (!stockpilesByGuildId[guildId] || !stockpilesByGuildId[guildId][hex]) {
       return false
@@ -240,9 +240,9 @@ export class StockpileDataService {
       createdAt: new Date().toISOString(),
     }
 
-    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
     if (!stockpilesByGuildId) {
-      await this.jsonFileService.saveStockpilesByGuildId({
+      await this.dataAccessService.saveStockpilesByGuildId({
         [guildId]: { [hex]: [stockpile] },
       })
       return true // Indicate successful addition
@@ -252,7 +252,7 @@ export class StockpileDataService {
 
     if (!stockpilesByRegion) {
       stockpilesByGuildId[guildId] = { [hex]: [stockpile] }
-      await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+      await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
       return true // Indicate successful addition
     }
 
@@ -261,19 +261,19 @@ export class StockpileDataService {
     if (!stockpiles) {
       stockpilesByRegion[hex] = [stockpile]
       stockpilesByGuildId[guildId] = stockpilesByRegion
-      await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+      await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
       return true // Indicate successful addition
     }
 
     stockpiles.push(stockpile)
     stockpilesByRegion[hex] = stockpiles
     stockpilesByGuildId[guildId] = stockpilesByRegion
-    await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+    await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
     return true // Indicate successful addition
   }
 
   public async getStockpileById(guildId: string, hex: string, stockpileId: string) {
-    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
     return stockpilesByGuildId[guildId][hex].find(
       (stockpile) => stockpile.id === stockpileId,
     ) as Stockpile
@@ -312,11 +312,11 @@ export class StockpileDataService {
     }
 
     // update the stockpile in the stockpilesByGuildId
-    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
     stockpilesByGuildId[guildId][hex] = stockpilesByGuildId[guildId][hex].map((stockpile) =>
       stockpile.id === id ? updatedStockpile : stockpile,
     )
-    await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+    await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
     return true // Indicate successful edit
   }
 
@@ -324,7 +324,7 @@ export class StockpileDataService {
     guildId: string,
     id: string,
   ): Promise<{ deletedStockpile: Stockpile | null; deletedFromHex: string }> {
-    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
 
     let deletedStockpile: Stockpile | null = null
     let deletedFromHex = ''
@@ -347,7 +347,7 @@ export class StockpileDataService {
       }
     })
 
-    await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+    await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
 
     return { deletedStockpile, deletedFromHex }
   }
@@ -368,14 +368,14 @@ export class StockpileDataService {
     channelId: string,
     embeddedMessageId: string,
   ) {
-    const embedsByGuildId = await this.jsonFileService.getEmbedsByGuildId()
+    const embedsByGuildId = await this.dataAccessService.getEmbedsByGuildId()
     embedsByGuildId[guildId] = { channelId, embeddedMessageId }
-    await this.jsonFileService.saveEmbedsByGuildId(embedsByGuildId)
+    await this.dataAccessService.saveEmbedsByGuildId(embedsByGuildId)
     return
   }
 
   public async getEmbedsByGuildId(guildId: string) {
-    const embedsByGuildId = await this.jsonFileService.getEmbedsByGuildId()
+    const embedsByGuildId = await this.dataAccessService.getEmbedsByGuildId()
     return embedsByGuildId[guildId] || {}
   }
 }
