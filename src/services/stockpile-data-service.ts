@@ -1,23 +1,17 @@
-import { dirname } from '@discordx/importer'
 import { differenceInMinutes } from 'date-fns'
 import { Discord } from 'discordx'
-import { Low } from 'lowdb'
-import { JSONFile } from 'lowdb/node'
-import path from 'node:path'
 import { v4 as uuidv4 } from 'uuid'
 import type {
-  FactionsByGuildId,
   FactionType,
-  LocationsManifest,
   MapItem,
   MapTextItem,
   Stockpile,
-  StockpilesByGuildId,
   StorageLocation,
   StorageLocationsByRegion,
   StorageType,
 } from '../models'
 import { Faction } from '../models'
+import { JsonFileService } from './json-file-service'
 
 type EmbedsByGuildId = {
   [guildId: string]: {
@@ -35,47 +29,16 @@ export class StockpileDataService {
     `https://war-service-live.foxholeservices.com/api/worldconquest/maps/${map}/static`
   private warDataUrl = 'https://war-service-live.foxholeservices.com/api/worldconquest/war'
 
-  private readonly defaultLocationsManifestData: LocationsManifest = {
-    warNumber: 0,
-    updatedAt: '',
-    COLONIALS: {},
-    WARDENS: {},
-  }
-  private readonly locationsManifestAdapter = new JSONFile<LocationsManifest>(
-    path.join(dirname(import.meta.url), '..', '..', 'data', 'locations-manifest.json'),
-  )
-  private readonly locationsManifestDb = new Low<LocationsManifest>(
-    this.locationsManifestAdapter,
-    this.defaultLocationsManifestData,
-  )
-  private readonly defaultStockpilesByGuildId: StockpilesByGuildId = {}
-  private readonly stockpilesByGuildIdAdapter = new JSONFile<StockpilesByGuildId>(
-    path.join(dirname(import.meta.url), '..', '..', 'data', 'stockpiles-by-guild-id.json'),
-  )
-  private readonly stockpilesByGuildIdDb = new Low<StockpilesByGuildId>(
-    this.stockpilesByGuildIdAdapter,
-    this.defaultStockpilesByGuildId,
-  )
-  private readonly embedsByGuildIdAdapter = new JSONFile<EmbedsByGuildId>(
-    path.join(dirname(import.meta.url), '..', '..', 'data', 'embeds-by-guild-id.json'),
-  )
-  private readonly embedsByGuildIdDb = new Low<EmbedsByGuildId>(this.embedsByGuildIdAdapter, {})
-
-  private readonly factionsByGuildIdAdapter = new JSONFile<FactionsByGuildId>(
-    path.join(dirname(import.meta.url), '..', '..', 'data', 'factions-by-guild-id.json'),
-  )
-  private readonly factionsByGuildIdDb = new Low<FactionsByGuildId>(
-    this.factionsByGuildIdAdapter,
-    {},
-  )
+  private readonly jsonFileService: JsonFileService
 
   constructor() {
+    this.jsonFileService = new JsonFileService()
     this.updateLocationsManifest()
   }
 
   public async updateLocationsManifest(manual = false): Promise<void> {
-    await this.locationsManifestDb.read()
-    const lastUpdate = new Date(this.locationsManifestDb.data?.updatedAt || 0)
+    const manifest = await this.jsonFileService.getLocationsManifest()
+    const lastUpdate = new Date(manifest?.updatedAt || 0)
     if (!manual && differenceInMinutes(new Date(), lastUpdate) < 15) return
     if (manual && differenceInMinutes(new Date(), lastUpdate) < 1) return
     let colonialStorageLocations = {} as StorageLocationsByRegion
@@ -183,51 +146,45 @@ export class StockpileDataService {
       Object.entries(wardenStorageLocations).sort(([a], [b]) => a.localeCompare(b)),
     )
 
-    this.locationsManifestDb.data = {
+    await this.jsonFileService.saveLocationsManifest({
       warNumber: warData.warNumber,
       updatedAt: new Date().toISOString(),
       COLONIALS: colonialStorageLocations,
       WARDENS: wardenStorageLocations,
-    }
-    await this.locationsManifestDb.write()
+    })
   }
 
   public async setFactionByGuildId(guildId: string, faction: FactionType) {
-    await this.factionsByGuildIdDb.read()
-    const factionsByGuildId = this.factionsByGuildIdDb.data
+    const factionsByGuildId = await this.jsonFileService.getFactionsByGuildId()
     factionsByGuildId[guildId] = faction
-    this.factionsByGuildIdDb.data = factionsByGuildId
-    await this.factionsByGuildIdDb.write()
-    return
+    await this.jsonFileService.saveFactionsByGuildId(factionsByGuildId)
   }
 
   public async getFactionByGuildId(guildId: string) {
-    await this.factionsByGuildIdDb.read()
-    const factionsByGuildId = this.factionsByGuildIdDb.data
+    const factionsByGuildId = await this.jsonFileService.getFactionsByGuildId()
     return factionsByGuildId[guildId] || Faction.None
   }
 
   public async getWarNumber() {
-    await this.locationsManifestDb.read()
-    return this.locationsManifestDb.data?.warNumber || 0
+    const manifest = await this.jsonFileService.getLocationsManifest()
+    return manifest?.warNumber || 0
   }
 
   public async getStorageLocationsByRegion(
     faction: Exclude<FactionType, 'NONE'>,
   ): Promise<StorageLocationsByRegion> {
-    await this.locationsManifestDb.read()
-    if (!this.locationsManifestDb.data) {
+    const manifest = await this.jsonFileService.getLocationsManifest()
+    if (!manifest) {
       await this.updateLocationsManifest()
     }
-    return this.locationsManifestDb.data[faction]
+    return manifest[faction]
   }
 
   public async broadcastManifestChanges() {}
 
   public async getStockpilesByGuildId(guildId: string | null) {
     if (!guildId) return {}
-    await this.stockpilesByGuildIdDb.read()
-    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
+    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
     if (!stockpilesByGuildId) return {}
     if (!stockpilesByGuildId[guildId]) return {}
 
@@ -241,8 +198,7 @@ export class StockpileDataService {
     stockpileName: string,
     excludeId?: string,
   ): Promise<boolean> {
-    await this.stockpilesByGuildIdDb.read()
-    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
+    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
 
     if (!stockpilesByGuildId[guildId] || !stockpilesByGuildId[guildId][hex]) {
       return false
@@ -263,8 +219,6 @@ export class StockpileDataService {
     stockpileName: string,
     createdBy: string,
   ): Promise<boolean> {
-    await this.stockpilesByGuildIdDb.read()
-
     if (!guildId || !code) return false
     const hex = location.split(':')[0]
     const locationName = location.split(':')[1].split(' - ')[0].trim()
@@ -286,12 +240,11 @@ export class StockpileDataService {
       createdAt: new Date().toISOString(),
     }
 
-    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
+    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
     if (!stockpilesByGuildId) {
-      this.stockpilesByGuildIdDb.data = {
+      this.jsonFileService.saveStockpilesByGuildId({
         [guildId]: { [hex]: [stockpile] },
-      }
-      await this.stockpilesByGuildIdDb.write()
+      })
       return true // Indicate successful addition
     }
 
@@ -299,8 +252,7 @@ export class StockpileDataService {
 
     if (!stockpilesByRegion) {
       stockpilesByGuildId[guildId] = { [hex]: [stockpile] }
-      this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-      await this.stockpilesByGuildIdDb.write()
+      this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
       return true // Indicate successful addition
     }
 
@@ -309,22 +261,19 @@ export class StockpileDataService {
     if (!stockpiles) {
       stockpilesByRegion[hex] = [stockpile]
       stockpilesByGuildId[guildId] = stockpilesByRegion
-      this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-      await this.stockpilesByGuildIdDb.write()
+      this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
       return true // Indicate successful addition
     }
 
     stockpiles.push(stockpile)
     stockpilesByRegion[hex] = stockpiles
     stockpilesByGuildId[guildId] = stockpilesByRegion
-    this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-    await this.stockpilesByGuildIdDb.write()
+    this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
     return true // Indicate successful addition
   }
 
   public async getStockpileById(guildId: string, hex: string, stockpileId: string) {
-    await this.stockpilesByGuildIdDb.read()
-    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
+    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
     return stockpilesByGuildId[guildId][hex].find(
       (stockpile) => stockpile.id === stockpileId,
     ) as Stockpile
@@ -338,13 +287,9 @@ export class StockpileDataService {
     stockpileName: string,
     createdBy: string,
   ): Promise<boolean> {
-    await this.stockpilesByGuildIdDb.read()
-    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
     if (!guildId || !code) return false
 
-    const currentStockpile = stockpilesByGuildId[guildId][hex].find(
-      (stockpile) => stockpile.id === id,
-    ) as Stockpile
+    const currentStockpile = await this.getStockpileById(guildId, hex, id)
 
     // Check for duplicate stockpile, excluding the current stockpile being edited
     const isDuplicate = await this.isDuplicateStockpile(
@@ -367,11 +312,11 @@ export class StockpileDataService {
     }
 
     // update the stockpile in the stockpilesByGuildId
+    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
     stockpilesByGuildId[guildId][hex] = stockpilesByGuildId[guildId][hex].map((stockpile) =>
       stockpile.id === id ? updatedStockpile : stockpile,
     )
-    this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-    await this.stockpilesByGuildIdDb.write()
+    this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
     return true // Indicate successful edit
   }
 
@@ -379,8 +324,7 @@ export class StockpileDataService {
     guildId: string,
     id: string,
   ): Promise<{ deletedStockpile: Stockpile | null; deletedFromHex: string }> {
-    await this.stockpilesByGuildIdDb.read()
-    const stockpilesByGuildId = this.stockpilesByGuildIdDb.data
+    const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
 
     let deletedStockpile: Stockpile | null = null
     let deletedFromHex = ''
@@ -403,8 +347,7 @@ export class StockpileDataService {
       }
     })
 
-    this.stockpilesByGuildIdDb.data = stockpilesByGuildId
-    await this.stockpilesByGuildIdDb.write()
+    this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
 
     return { deletedStockpile, deletedFromHex }
   }
@@ -425,17 +368,14 @@ export class StockpileDataService {
     channelId: string,
     embeddedMessageId: string,
   ) {
-    await this.embedsByGuildIdDb.read()
-    const embedsByGuildId = this.embedsByGuildIdDb.data
+    const embedsByGuildId = await this.jsonFileService.getEmbedsByGuildId()
     embedsByGuildId[guildId] = { channelId, embeddedMessageId }
-    this.embedsByGuildIdDb.data = embedsByGuildId
-    await this.embedsByGuildIdDb.write()
+    this.jsonFileService.saveEmbedsByGuildId(embedsByGuildId)
     return
   }
 
   public async getEmbedsByGuildId(guildId: string) {
-    await this.embedsByGuildIdDb.read()
-    const embedsByGuildId = this.embedsByGuildIdDb.data
+    const embedsByGuildId = await this.jsonFileService.getEmbedsByGuildId()
     return embedsByGuildId[guildId] || {}
   }
 }
