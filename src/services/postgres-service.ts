@@ -80,7 +80,7 @@ export class PostgresService {
         ) as stockpiles
       FROM guilds g
       LEFT JOIN regions r ON true
-      LEFT JOIN stockpiles s ON s.guild_id = g.guild_id AND s.region_id = r.id
+      LEFT JOIN stockpiles s ON s.guild_id = g.guild_id AND s.region_hex = r.hex
       GROUP BY g.guild_id, r.hex
     `
     const result = await this.pool.query(query)
