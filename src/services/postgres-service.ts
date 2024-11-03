@@ -98,7 +98,6 @@ export class PostgresService {
   }
 
   async saveStockpilesByGuildId(data: StockpilesByGuildId): Promise<void> {
-    // Begin transaction
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')
@@ -123,7 +122,10 @@ export class PostgresService {
                 created_at,
                 updated_by,
                 updated_at
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              ) VALUES (
+                COALESCE($1, gen_random_uuid()),  -- Use provided ID or generate a new UUID
+                $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+              )
             `
             await client.query(query, [
               stockpile.id,
