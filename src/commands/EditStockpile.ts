@@ -14,6 +14,7 @@ import { Discord, Slash, SlashOption, SelectMenuComponent, ModalComponent } from
 import { Command, EditStockpileIds } from '../models/constants'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { FactionColors } from '../models'
+import { checkBotPermissions } from '../utils/permissions'
 
 @Discord()
 export class EditStockpile {
@@ -23,6 +24,7 @@ export class EditStockpile {
 
   @Slash({ description: 'Edit an existing stockpile', name: Command.EditStockpile })
   async editStockpile(interaction: CommandInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const { guildId } = interaction
 
     if (!guildId) {
@@ -73,6 +75,7 @@ export class EditStockpile {
 
   @SelectMenuComponent({ id: EditStockpileIds.StockpileSelect })
   async handleStockpileSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const [hex, stockpileId] = interaction.values[0].split(':')
     this.hex[interaction.user.id] = hex
     this.stockpileId[interaction.user.id] = stockpileId
@@ -126,6 +129,7 @@ export class EditStockpile {
 
   @ModalComponent({ id: EditStockpileIds.StockpileEditModal })
   async handleStockpileEdit(interaction: ModalSubmitInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const { guildId, user } = interaction
 
     if (!guildId) {

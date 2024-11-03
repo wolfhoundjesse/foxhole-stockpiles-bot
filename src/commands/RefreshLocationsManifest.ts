@@ -1,6 +1,7 @@
 import { Discord, Slash } from 'discordx'
 import { CommandInteraction } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service.js'
+import { checkBotPermissions } from '../utils/permissions.js'
 
 @Discord()
 export class RefreshLocationsManifest {
@@ -11,6 +12,7 @@ export class RefreshLocationsManifest {
     description: 'Manually refresh the locations manifest',
   })
   async refreshManifest(interaction: CommandInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     try {
       await this.stockpileDataService.updateLocationsManifest(true)
       await interaction.reply({

@@ -14,6 +14,7 @@ import {
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, AddStockpileIds } from '../models/constants'
 import { Faction, FactionColors, type FactionType } from '../models'
+import { checkBotPermissions } from '../utils/permissions'
 
 @Discord()
 export class AddStockpile {
@@ -22,6 +23,7 @@ export class AddStockpile {
 
   @Slash({ description: 'Add a stockpile', name: Command.AddStockpile })
   async addStockpile(interaction: CommandInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const faction = await this.getFaction(interaction)
     if (faction === Faction.None) {
       return
@@ -62,6 +64,7 @@ export class AddStockpile {
 
   @SelectMenuComponent({ id: AddStockpileIds.HexMenu })
   async handleLocationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const selectedHex = interaction.values[0] // Get selected location
     const faction = await this.getFaction(interaction)
     if (faction === Faction.None) {
@@ -109,6 +112,7 @@ export class AddStockpile {
   // Handle sublocation selection (sublocation_select)
   @SelectMenuComponent({ id: AddStockpileIds.StockpileMenu })
   async handleSublocationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const selectedStorageLocation = interaction.values[0] // Get selected sublocation
     this.selectedLocations[interaction.user.id] = selectedStorageLocation
     // Present a modal to the user for stockpile code and name
@@ -140,6 +144,7 @@ export class AddStockpile {
   // Handle modal submission (stockpile_modal)
   @ModalComponent({ id: AddStockpileIds.StockpileDetails })
   async handleStockpileDetails(interaction: ModalSubmitInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const guildId = interaction.guildId
     if (!guildId) {
       await interaction.reply({
@@ -213,6 +218,7 @@ export class AddStockpile {
   private async getFaction(
     interaction: CommandInteraction | StringSelectMenuInteraction,
   ): Promise<FactionType> {
+    if (!(await checkBotPermissions(interaction))) return Faction.None
     const guildId = interaction.guildId
     if (!guildId) {
       await interaction.reply({

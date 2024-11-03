@@ -12,6 +12,7 @@ import { Discord, Slash, SelectMenuComponent, ButtonComponent } from 'discordx'
 import { Command, DeleteStockpileIds } from '../models/constants'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { FactionColors } from '../models'
+import { checkBotPermissions } from '../utils/permissions'
 
 @Discord()
 export class DeleteStockpile {
@@ -20,6 +21,7 @@ export class DeleteStockpile {
 
   @Slash({ description: 'Delete an existing stockpile', name: Command.DeleteStockpile })
   async deleteStockpile(interaction: CommandInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const { guildId } = interaction
 
     if (!guildId) {
@@ -70,6 +72,7 @@ export class DeleteStockpile {
 
   @SelectMenuComponent({ id: DeleteStockpileIds.StockpileSelect })
   async handleStockpileSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const stockpileId = interaction.values[0]
     this.stockpileToDelete[interaction.user.id] = stockpileId
 
@@ -93,6 +96,7 @@ export class DeleteStockpile {
 
   @ButtonComponent({ id: DeleteStockpileIds.ConfirmButton })
   async handleConfirmDelete(interaction: ButtonInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     const { guildId } = interaction
 
     if (!guildId) {
@@ -159,6 +163,7 @@ export class DeleteStockpile {
 
   @ButtonComponent({ id: DeleteStockpileIds.CancelButton })
   async handleCancelDelete(interaction: ButtonInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
     delete this.stockpileToDelete[interaction.user.id]
     await interaction.update({
       content: 'Stockpile deletion cancelled.',
