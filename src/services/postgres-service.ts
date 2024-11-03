@@ -64,7 +64,7 @@ export class PostgresService {
     const query = `
       SELECT 
         g.guild_id,
-        r.hex,
+        s.region_hex as hex,
         json_agg(
           json_build_object(
             'id', s.id,
@@ -79,9 +79,9 @@ export class PostgresService {
           )
         ) as stockpiles
       FROM guilds g
-      LEFT JOIN regions r ON true
-      LEFT JOIN stockpiles s ON s.guild_id = g.guild_id AND s.region_hex = r.hex
-      GROUP BY g.guild_id, r.hex
+      LEFT JOIN stockpiles s ON s.guild_id = g.guild_id
+      WHERE s.id IS NOT NULL
+      GROUP BY g.guild_id, s.region_hex
     `
     const result = await this.pool.query(query)
 
