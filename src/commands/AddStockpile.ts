@@ -35,9 +35,12 @@ export class AddStockpile {
       .setCustomId(AddStockpileIds.HexMenu)
       .setPlaceholder('Region/Hex')
       .addOptions(
-        Object.keys(storageLocationsByRegion).map((key) => {
-          return new StringSelectMenuOptionBuilder().setLabel(key).setValue(key)
-        }),
+        // limit to the first 25
+        Object.keys(storageLocationsByRegion)
+          .slice(0, 25)
+          .map((key) => {
+            return new StringSelectMenuOptionBuilder().setLabel(key).setValue(key)
+          }),
       )
 
     const stockpileMenu = new StringSelectMenuBuilder()

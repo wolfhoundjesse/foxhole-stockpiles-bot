@@ -242,7 +242,7 @@ export class StockpileDataService {
 
     const stockpilesByGuildId = await this.jsonFileService.getStockpilesByGuildId()
     if (!stockpilesByGuildId) {
-      this.jsonFileService.saveStockpilesByGuildId({
+      await this.jsonFileService.saveStockpilesByGuildId({
         [guildId]: { [hex]: [stockpile] },
       })
       return true // Indicate successful addition
@@ -252,7 +252,7 @@ export class StockpileDataService {
 
     if (!stockpilesByRegion) {
       stockpilesByGuildId[guildId] = { [hex]: [stockpile] }
-      this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+      await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
       return true // Indicate successful addition
     }
 
@@ -261,14 +261,14 @@ export class StockpileDataService {
     if (!stockpiles) {
       stockpilesByRegion[hex] = [stockpile]
       stockpilesByGuildId[guildId] = stockpilesByRegion
-      this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+      await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
       return true // Indicate successful addition
     }
 
     stockpiles.push(stockpile)
     stockpilesByRegion[hex] = stockpiles
     stockpilesByGuildId[guildId] = stockpilesByRegion
-    this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+    await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
     return true // Indicate successful addition
   }
 
@@ -316,7 +316,7 @@ export class StockpileDataService {
     stockpilesByGuildId[guildId][hex] = stockpilesByGuildId[guildId][hex].map((stockpile) =>
       stockpile.id === id ? updatedStockpile : stockpile,
     )
-    this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+    await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
     return true // Indicate successful edit
   }
 
@@ -347,7 +347,7 @@ export class StockpileDataService {
       }
     })
 
-    this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
+    await this.jsonFileService.saveStockpilesByGuildId(stockpilesByGuildId)
 
     return { deletedStockpile, deletedFromHex }
   }
@@ -370,7 +370,7 @@ export class StockpileDataService {
   ) {
     const embedsByGuildId = await this.jsonFileService.getEmbedsByGuildId()
     embedsByGuildId[guildId] = { channelId, embeddedMessageId }
-    this.jsonFileService.saveEmbedsByGuildId(embedsByGuildId)
+    await this.jsonFileService.saveEmbedsByGuildId(embedsByGuildId)
     return
   }
 
