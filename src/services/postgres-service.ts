@@ -24,7 +24,7 @@ export class PostgresService {
   // Locations Manifest
   async getLocationsManifest(): Promise<LocationsManifest> {
     const query = `
-      SELECT war_number, updated_at, colonial_locations, warden_locations
+      SELECT war_number, updated_at, colonial_locations, warden_locations, is_resistance_phase
       FROM locations_manifest
       ORDER BY updated_at DESC
       LIMIT 1
@@ -57,7 +57,7 @@ export class PostgresService {
         colonial_locations,
         warden_locations, 
         is_resistance_phase
-      ) VALUES ($1, $2, $3, $4)
+      ) VALUES ($1, $2, $3, $4, $5)
     `
     await this.pool.query(query, [
       data.warNumber,
