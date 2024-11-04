@@ -262,4 +262,12 @@ export class PostgresService {
       client.release()
     }
   }
+
+  async resetStockpilesByGuildId(guildId: string): Promise<void> {
+    const query = `
+      DELETE FROM stockpiles
+      WHERE guild_id = $1
+    `
+    await this.pool.query(query, [guildId])
+  }
 }

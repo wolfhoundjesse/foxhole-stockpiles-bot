@@ -21,6 +21,18 @@ type EmbedsByGuildId = {
   }
 }
 
+/**
+ * {
+    "warId": "780e27e5-07e1-4885-8e5d-815aadf0d647",
+    "warNumber": 117,
+    "winner": "WARDENS",
+    "conquestStartTime": 1726419602524,
+    "conquestEndTime": 1730693991589,
+    "resistanceStartTime": 1730694891615,
+    "requiredVictoryTowns": 31
+}
+ */
+
 @Discord()
 export class StockpileDataService {
   private mapNamesUrl = 'https://war-service-live.foxholeservices.com/api/worldconquest/maps'
@@ -380,5 +392,13 @@ export class StockpileDataService {
   public async getEmbedsByGuildId(guildId: string) {
     const embedsByGuildId = await this.dataAccessService.getEmbedsByGuildId()
     return embedsByGuildId[guildId] || {}
+  }
+
+  public async resetStockpilesByGuildId(guildId: string): Promise<void> {
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
+    if (stockpilesByGuildId[guildId]) {
+      delete stockpilesByGuildId[guildId]
+      await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
+    }
   }
 }

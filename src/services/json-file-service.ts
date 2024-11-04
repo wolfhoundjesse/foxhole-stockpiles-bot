@@ -70,6 +70,14 @@ export class JsonFileService {
     await this.stockpilesByGuildIdDb.write()
   }
 
+  async resetStockpilesByGuildId(guildId: string): Promise<void> {
+    await this.stockpilesByGuildIdDb.read()
+    if (this.stockpilesByGuildIdDb.data[guildId]) {
+      delete this.stockpilesByGuildIdDb.data[guildId]
+      await this.stockpilesByGuildIdDb.write()
+    }
+  }
+
   // Factions
   async getFactionsByGuildId(): Promise<FactionsByGuildId> {
     await this.factionsByGuildIdDb.read()
