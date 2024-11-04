@@ -1,11 +1,9 @@
 import { Discord, Slash } from 'discordx'
 import { CommandInteraction } from 'discord.js'
-import { injectable } from 'tsyringe'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command } from '../models'
 
 @Discord()
-@injectable()
 export class ResetStockpilesCommand {
   constructor(private stockpileDataService: StockpileDataService) {}
 
