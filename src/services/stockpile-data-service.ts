@@ -162,6 +162,7 @@ export class StockpileDataService {
     )
 
     await this.dataAccessService.saveLocationsManifest({
+      isResistancePhase: warData?.winner?.length > 0 && warData?.resistanceStartTime,
       warNumber: warData.warNumber,
       updatedAt: new Date().toISOString(),
       COLONIALS: colonialStorageLocations,
@@ -183,6 +184,11 @@ export class StockpileDataService {
   public async getWarNumber() {
     const manifest = await this.dataAccessService.getLocationsManifest()
     return manifest?.warNumber || 0
+  }
+
+  public async isResistancePhase() {
+    const manifest = await this.dataAccessService.getLocationsManifest()
+    return manifest?.isResistancePhase || false
   }
 
   public async getStorageLocationsByRegion(

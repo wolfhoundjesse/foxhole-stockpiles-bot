@@ -174,12 +174,13 @@ export class DeleteStockpile {
   private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const warNumber = await this.stockpileDataService.getWarNumber()
+    const isResistancePhase = await this.stockpileDataService.isResistancePhase()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
     const color = FactionColors[faction]
 
     if (!stockpiles) {
       return new EmbedBuilder()
-        .setTitle(`War ${warNumber} Stockpiles`)
+        .setTitle(`War ${warNumber} ${isResistancePhase ? 'Resistance' : 'Conquest'} Stockpiles`)
         .setColor(color)
         .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
         .setTimestamp()
@@ -199,7 +200,9 @@ export class DeleteStockpile {
     })
 
     return new EmbedBuilder()
-      .setTitle(`War ${warNumber} Stockpiles`)
+      .setTitle(
+        `War ${warNumber} ${isResistancePhase ? 'Resistance' : 'Conquest'} Stockpiles`,
+      )
       .setColor(color)
       .addFields(stockpileFields)
       .setTimestamp()

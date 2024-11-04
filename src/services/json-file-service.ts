@@ -17,6 +17,7 @@ export class JsonFileService {
       updatedAt: '',
       COLONIALS: {},
       WARDENS: {},
+      isResistancePhase: false,
     }
 
     this.locationsManifestDb = new Low<LocationsManifest>(

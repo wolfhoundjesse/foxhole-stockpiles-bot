@@ -12,8 +12,8 @@ export class ResetStockpilesCommand {
     description: 'Reset all stockpiles for this server',
   })
   async resetStockpiles(interaction: CommandInteraction): Promise<void> {
-    // Defer reply since this might take a moment
-    await interaction.deferReply()
+    // Defer reply as ephemeral since this might take a moment
+    await interaction.deferReply({ ephemeral: true })
 
     try {
       // Get the guild ID from the interaction

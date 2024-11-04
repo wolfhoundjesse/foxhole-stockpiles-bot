@@ -36,6 +36,7 @@ export class PostgresService {
         updatedAt: '',
         COLONIALS: {},
         WARDENS: {},
+        isResistancePhase: false,
       }
     }
 
@@ -44,6 +45,7 @@ export class PostgresService {
       updatedAt: result.rows[0].updated_at,
       COLONIALS: result.rows[0].colonial_locations,
       WARDENS: result.rows[0].warden_locations,
+      isResistancePhase: result.rows[0].is_resistance_phase,
     }
   }
 
@@ -53,10 +55,17 @@ export class PostgresService {
         war_number,
         updated_at,
         colonial_locations,
-        warden_locations
+        warden_locations, 
+        is_resistance_phase
       ) VALUES ($1, $2, $3, $4)
     `
-    await this.pool.query(query, [data.warNumber, data.updatedAt, data.COLONIALS, data.WARDENS])
+    await this.pool.query(query, [
+      data.warNumber,
+      data.updatedAt,
+      data.COLONIALS,
+      data.WARDENS,
+      data.isResistancePhase,
+    ])
   }
 
   // Stockpiles
