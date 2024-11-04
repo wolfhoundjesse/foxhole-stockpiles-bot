@@ -162,7 +162,7 @@ export class StockpileDataService {
     )
 
     await this.dataAccessService.saveLocationsManifest({
-      isResistancePhase: warData?.winner?.length > 0 && warData?.resistanceStartTime,
+      isResistancePhase: warData?.winner?.length > 0 && warData?.resistanceStartTime?.length > 0,
       warNumber: warData.warNumber,
       updatedAt: new Date().toISOString(),
       COLONIALS: colonialStorageLocations,
