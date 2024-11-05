@@ -23,8 +23,27 @@ export class PostgresService {
 
   // Locations Manifest
   async getLocationsManifest(): Promise<LocationsManifest | null> {
-    const result = await this.pool.query('SELECT manifest FROM locations_manifest WHERE id = 1')
-    return result.rows[0]?.manifest || null
+    const result = await this.pool.query(`
+      SELECT 
+        war_number,
+        is_resistance_phase,
+        colonial_locations as "COLONIALS",
+        warden_locations as "WARDENS",
+        updated_at
+      FROM locations_manifest
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `)
+
+    if (!result.rows[0]) return null
+
+    return {
+      warNumber: result.rows[0].war_number,
+      isResistancePhase: result.rows[0].is_resistance_phase,
+      COLONIALS: result.rows[0].COLONIALS,
+      WARDENS: result.rows[0].WARDENS,
+      updatedAt: result.rows[0].updated_at.toISOString(),
+    }
   }
 
   async saveLocationsManifest(manifest: LocationsManifest): Promise<void> {
@@ -39,18 +58,6 @@ export class PostgresService {
       `,
       [manifest.warNumber, manifest.isResistancePhase, manifest.COLONIALS, manifest.WARDENS],
     )
-  }
-
-  async initializeTables(): Promise<void> {
-    await this.pool.query(`
-      // ... other table creation SQL ...
-
-      CREATE TABLE IF NOT EXISTS locations_manifest (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        manifest JSONB NOT NULL,
-        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
-      );
-    `)
   }
 
   // Stockpiles
