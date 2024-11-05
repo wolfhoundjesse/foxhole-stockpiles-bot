@@ -161,8 +161,6 @@ export class StockpileDataService {
       Object.entries(wardenStorageLocations).sort(([a], [b]) => a.localeCompare(b)),
     )
 
-    console.log(JSON.stringify(warData, null, 2))
-
     await this.dataAccessService.saveLocationsManifest({
       isResistancePhase: warData?.winner?.length > 0 && warData?.resistanceStartTime?.length > 0,
       warNumber: warData.warNumber,
