@@ -197,6 +197,13 @@ export class StockpileDataService {
     const manifest = await this.dataAccessService.getLocationsManifest()
     if (!manifest) {
       await this.updateLocationsManifest()
+      // Get the manifest again after updating
+      const updatedManifest = await this.dataAccessService.getLocationsManifest()
+      if (!updatedManifest) {
+        // If we still don't have a manifest, return an empty object
+        return {}
+      }
+      return updatedManifest[faction]
     }
     return manifest[faction]
   }

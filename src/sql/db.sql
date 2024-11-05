@@ -3,15 +3,10 @@ CREATE TABLE guilds (
   faction TEXT
 );
 
-CREATE TABLE regions (
-  id SERIAL PRIMARY KEY,
-  hex TEXT NOT NULL UNIQUE
-);
-
 CREATE TABLE stockpiles (
-  id UUID PRIMARY KEY,
-  guild_id TEXT REFERENCES guilds(guild_id),
-  region_hex TEXT REFERENCES regions(hex),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  guild_id TEXT REFERENCES guilds(guild_id) NOT NULL,
+  hex TEXT NOT NULL,
   location_name TEXT NOT NULL,
   code TEXT NOT NULL,
   stockpile_name TEXT NOT NULL,
@@ -23,9 +18,9 @@ CREATE TABLE stockpiles (
 );
 
 CREATE TABLE locations_manifest (
-  id SERIAL PRIMARY KEY,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW() PRIMARY KEY,
   war_number INTEGER NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  is_resistance_phase BOOLEAN NOT NULL DEFAULT FALSE,
   colonial_locations JSONB NOT NULL,
   warden_locations JSONB NOT NULL
 );

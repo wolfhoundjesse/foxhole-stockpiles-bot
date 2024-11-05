@@ -22,50 +22,35 @@ export class PostgresService {
   }
 
   // Locations Manifest
-  async getLocationsManifest(): Promise<LocationsManifest> {
-    const query = `
-      SELECT war_number, updated_at, colonial_locations, warden_locations, is_resistance_phase
-      FROM locations_manifest
-      ORDER BY updated_at DESC
-      LIMIT 1
-    `
-    const result = await this.pool.query(query)
-    if (!result.rows[0]) {
-      return {
-        warNumber: 0,
-        updatedAt: '',
-        COLONIALS: {},
-        WARDENS: {},
-        isResistancePhase: false,
-      }
-    }
-
-    return {
-      warNumber: result.rows[0].war_number,
-      updatedAt: result.rows[0].updated_at,
-      COLONIALS: result.rows[0].colonial_locations,
-      WARDENS: result.rows[0].warden_locations,
-      isResistancePhase: result.rows[0].is_resistance_phase,
-    }
+  async getLocationsManifest(): Promise<LocationsManifest | null> {
+    const result = await this.pool.query('SELECT manifest FROM locations_manifest WHERE id = 1')
+    return result.rows[0]?.manifest || null
   }
 
-  async saveLocationsManifest(data: LocationsManifest): Promise<void> {
-    const query = `
+  async saveLocationsManifest(manifest: LocationsManifest): Promise<void> {
+    await this.pool.query(
+      `
       INSERT INTO locations_manifest (
         war_number,
-        updated_at,
+        is_resistance_phase,
         colonial_locations,
-        warden_locations, 
-        is_resistance_phase
-      ) VALUES ($1, $2, $3, $4, $5)
-    `
-    await this.pool.query(query, [
-      data.warNumber,
-      data.updatedAt,
-      data.COLONIALS,
-      data.WARDENS,
-      data.isResistancePhase,
-    ])
+        warden_locations
+      ) VALUES ($1, $2, $3, $4)
+      `,
+      [manifest.warNumber, manifest.isResistancePhase, manifest.COLONIALS, manifest.WARDENS],
+    )
+  }
+
+  async initializeTables(): Promise<void> {
+    await this.pool.query(`
+      // ... other table creation SQL ...
+
+      CREATE TABLE IF NOT EXISTS locations_manifest (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        manifest JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+      );
+    `)
   }
 
   // Stockpiles
@@ -73,8 +58,8 @@ export class PostgresService {
     const query = `
       SELECT 
         g.guild_id,
-        s.region_hex as hex,
-        json_agg(
+        s.hex,
+        COALESCE(json_agg(
           json_build_object(
             'id', s.id,
             'locationName', s.location_name,
@@ -86,20 +71,18 @@ export class PostgresService {
             'updatedBy', s.updated_by,
             'updatedAt', s.updated_at
           )
-        ) as stockpiles
+        ) FILTER (WHERE s.id IS NOT NULL), '[]') as stockpiles
       FROM guilds g
       LEFT JOIN stockpiles s ON s.guild_id = g.guild_id
-      WHERE s.id IS NOT NULL
-      GROUP BY g.guild_id, s.region_hex
+      GROUP BY g.guild_id, s.hex
     `
     const result = await this.pool.query(query)
 
-    // Transform the flat results into the nested structure expected
     return result.rows.reduce((acc, row) => {
       if (!acc[row.guild_id]) {
         acc[row.guild_id] = {}
       }
-      if (row.stockpiles[0] !== null) {
+      if (row.hex && row.stockpiles.length > 0) {
         acc[row.guild_id][row.hex] = row.stockpiles
       }
       return acc
@@ -126,23 +109,12 @@ export class PostgresService {
         )
 
         for (const [hex, stockpiles] of Object.entries(regions)) {
-          // Ensure region exists
-          await client.query(
-            `
-            INSERT INTO regions (hex)
-            VALUES ($1)
-            ON CONFLICT (hex) DO NOTHING
-          `,
-            [hex],
-          )
-
           for (const stockpile of stockpiles) {
-            // Original stockpile insert query remains the same
             const query = `
               INSERT INTO stockpiles (
                 id,
                 guild_id,
-                region_hex,
+                hex,
                 location_name,
                 code,
                 stockpile_name,
@@ -242,15 +214,10 @@ export class PostgresService {
   }
 
   async saveEmbedsByGuildId(data: EmbedsByGuildId): Promise<void> {
-    // Begin transaction
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')
 
-      // Clear existing embeds
-      await client.query('DELETE FROM embedded_messages')
-
-      // Insert new embeds
       for (const [guildId, embed] of Object.entries(data)) {
         const query = `
           INSERT INTO embedded_messages (guild_id, channel_id, message_id)
@@ -278,5 +245,89 @@ export class PostgresService {
       WHERE guild_id = $1
     `
     await this.pool.query(query, [guildId])
+  }
+
+  // Add these methods for more efficient single-stockpile operations
+  async addStockpile(guildId: string, stockpile: Stockpile, hex: string): Promise<void> {
+    const client = await this.pool.connect()
+    try {
+      await client.query('BEGIN')
+
+      // Ensure guild exists
+      await client.query(
+        `INSERT INTO guilds (guild_id, faction)
+         VALUES ($1, 'NONE')
+         ON CONFLICT (guild_id) DO NOTHING`,
+        [guildId],
+      )
+
+      // Insert stockpile
+      await client.query(
+        `INSERT INTO stockpiles (
+          id, guild_id, hex, location_name, code,
+          stockpile_name, storage_type, created_by,
+          created_at, updated_by, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          stockpile.id,
+          guildId,
+          hex,
+          stockpile.locationName,
+          stockpile.code,
+          stockpile.stockpileName,
+          stockpile.storageType,
+          stockpile.createdBy,
+          stockpile.createdAt,
+          stockpile.updatedBy,
+          stockpile.updatedAt,
+        ],
+      )
+
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK')
+      throw e
+    } finally {
+      client.release()
+    }
+  }
+
+  async updateSingleStockpile(stockpile: Stockpile): Promise<void> {
+    await this.pool.query(
+      `UPDATE stockpiles 
+       SET code = $1,
+           stockpile_name = $2,
+           updated_by = $3,
+           updated_at = $4
+       WHERE id = $5`,
+      [
+        stockpile.code,
+        stockpile.stockpileName,
+        stockpile.updatedBy,
+        stockpile.updatedAt,
+        stockpile.id,
+      ],
+    )
+  }
+
+  async getStockpileById(guildId: string, hex: string, id: string): Promise<Stockpile | null> {
+    const result = await this.pool.query(
+      `SELECT * FROM stockpiles 
+       WHERE guild_id = $1 AND hex = $2 AND id = $3`,
+      [guildId, hex, id],
+    )
+    return result.rows[0]
+      ? {
+          id: result.rows[0].id,
+          locationName: result.rows[0].location_name,
+          code: result.rows[0].code,
+          stockpileName: result.rows[0].stockpile_name,
+          storageType: result.rows[0].storage_type,
+          createdBy: result.rows[0].created_by,
+          createdAt: result.rows[0].created_at,
+          updatedBy: result.rows[0].updated_by,
+          updatedAt: result.rows[0].updated_at,
+        }
+      : null
   }
 }
