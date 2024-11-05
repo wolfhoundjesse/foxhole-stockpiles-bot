@@ -36,7 +36,7 @@ export class DeleteStockpile {
       const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
       const stockpileOptions = Object.entries(stockpiles).flatMap(([hex, stockpileList]) =>
         stockpileList.map((stockpile) => ({
-          label: `${hex} - ${stockpile.stockpileName}`,
+          label: `${hex} - ${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName}`,
           value: stockpile.id,
         })),
       )
@@ -200,9 +200,7 @@ export class DeleteStockpile {
     })
 
     return new EmbedBuilder()
-      .setTitle(
-        `War ${warNumber} ${isResistancePhase ? 'Resistance' : 'Conquest'} Stockpiles`,
-      )
+      .setTitle(`War ${warNumber} ${isResistancePhase ? 'Resistance' : 'Conquest'} Stockpiles`)
       .setColor(color)
       .addFields(stockpileFields)
       .setTimestamp()
