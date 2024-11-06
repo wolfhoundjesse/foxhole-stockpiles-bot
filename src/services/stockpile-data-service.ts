@@ -246,6 +246,7 @@ export class StockpileDataService {
     code: string,
     stockpileName: string,
     createdBy: string,
+    channelId: string,
   ): Promise<boolean> {
     if (!guildId || !code) return false
     const hex = location.split(':')[0]
@@ -255,7 +256,7 @@ export class StockpileDataService {
     // Check for duplicate stockpile
     const isDuplicate = await this.isDuplicateStockpile(guildId, hex, locationName, stockpileName)
     if (isDuplicate) {
-      return false // Indicate that a duplicate was found
+      return false
     }
 
     const stockpile = {
@@ -266,38 +267,22 @@ export class StockpileDataService {
       storageType,
       createdBy,
       createdAt: new Date().toISOString(),
+      channelId,
     }
 
-    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
-    if (!stockpilesByGuildId) {
-      await this.dataAccessService.saveStockpilesByGuildId({
-        [guildId]: { [hex]: [stockpile] },
-      })
-      return true // Indicate successful addition
-    }
-
-    const stockpilesByRegion = stockpilesByGuildId[guildId]
-
-    if (!stockpilesByRegion) {
-      stockpilesByGuildId[guildId] = { [hex]: [stockpile] }
-      await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
-      return true // Indicate successful addition
-    }
-
-    const stockpiles = stockpilesByRegion[hex]
-
-    if (!stockpiles) {
-      stockpilesByRegion[hex] = [stockpile]
-      stockpilesByGuildId[guildId] = stockpilesByRegion
-      await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
-      return true // Indicate successful addition
-    }
-
-    stockpiles.push(stockpile)
-    stockpilesByRegion[hex] = stockpiles
-    stockpilesByGuildId[guildId] = stockpilesByRegion
-    await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
-    return true // Indicate successful addition
+    await this.dataAccessService.addStockpile(
+      stockpile.id,
+      guildId,
+      hex,
+      stockpile.locationName,
+      stockpile.code,
+      stockpile.stockpileName,
+      stockpile.storageType,
+      stockpile.createdBy,
+      stockpile.createdAt,
+      channelId,
+    )
+    return true
   }
 
   public async getStockpileById(guildId: string, hex: string, stockpileId: string) {

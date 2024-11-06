@@ -255,48 +255,37 @@ export class PostgresService {
   }
 
   // Add these methods for more efficient single-stockpile operations
-  async addStockpile(guildId: string, stockpile: Stockpile, hex: string): Promise<void> {
-    const client = await this.pool.connect()
-    try {
-      await client.query('BEGIN')
-
-      // Ensure guild exists
-      await client.query(
-        `INSERT INTO guilds (guild_id, faction)
-         VALUES ($1, 'NONE')
-         ON CONFLICT (guild_id) DO NOTHING`,
-        [guildId],
-      )
-
-      // Insert stockpile
-      await client.query(
-        `INSERT INTO stockpiles (
-          id, guild_id, hex, location_name, code,
-          stockpile_name, storage_type, created_by,
-          created_at, updated_by, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [
-          stockpile.id,
-          guildId,
-          hex,
-          stockpile.locationName,
-          stockpile.code,
-          stockpile.stockpileName,
-          stockpile.storageType,
-          stockpile.createdBy,
-          stockpile.createdAt,
-          stockpile.updatedBy,
-          stockpile.updatedAt,
-        ],
-      )
-
-      await client.query('COMMIT')
-    } catch (e) {
-      await client.query('ROLLBACK')
-      throw e
-    } finally {
-      client.release()
-    }
+  async addStockpile(
+    id: string,
+    guildId: string,
+    hex: string,
+    locationName: string,
+    code: string,
+    stockpileName: string,
+    storageType: string,
+    createdBy: string,
+    createdAt: string,
+    channelId: string,
+  ): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO stockpiles (
+        id, guild_id, hex, location_name, code,
+        stockpile_name, storage_type, created_by,
+        created_at, channel_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        id,
+        guildId,
+        hex,
+        locationName,
+        code,
+        stockpileName,
+        storageType,
+        createdBy,
+        createdAt,
+        channelId,
+      ],
+    )
   }
 
   async updateSingleStockpile(stockpile: Stockpile): Promise<void> {

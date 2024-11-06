@@ -149,9 +149,9 @@ export class AddStockpile {
   async handleStockpileDetails(interaction: ModalSubmitInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
     const guildId = interaction.guildId
-    if (!guildId) {
+    if (!guildId || !interaction.channelId) {
       await interaction.reply({
-        content: 'This command can only be used in a server.',
+        content: 'This command can only be used in a server channel.',
         ephemeral: true,
       })
       return
@@ -179,6 +179,7 @@ export class AddStockpile {
       stockpileCode,
       stockpileName,
       interaction.user.id,
+      interaction.channelId,
     )
 
     if (!success) {
