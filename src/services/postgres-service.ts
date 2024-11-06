@@ -69,6 +69,7 @@ export class PostgresService {
         COALESCE(json_agg(
           json_build_object(
             'id', s.id,
+            'channelId', s.channel_id,
             'locationName', s.location_name,
             'code', s.code,
             'stockpileName', s.stockpile_name,
