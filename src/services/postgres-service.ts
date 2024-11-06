@@ -122,6 +122,7 @@ export class PostgresService {
               INSERT INTO stockpiles (
                 id,
                 guild_id,
+                channel_id,
                 hex,
                 location_name,
                 code,
@@ -133,12 +134,13 @@ export class PostgresService {
                 updated_at
               ) VALUES (
                 COALESCE($1, gen_random_uuid()),
-                $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
               )
             `
             await client.query(query, [
               stockpile.id,
               guildId,
+              stockpile.channelId,
               hex,
               stockpile.locationName,
               stockpile.code,
@@ -307,11 +309,16 @@ export class PostgresService {
     )
   }
 
-  async getStockpileById(guildId: string, hex: string, id: string): Promise<Stockpile | null> {
+  async getStockpileById(
+    guildId: string,
+    hex: string,
+    id: string,
+    channelId: string,
+  ): Promise<Stockpile | null> {
     const result = await this.pool.query(
       `SELECT * FROM stockpiles 
-       WHERE guild_id = $1 AND hex = $2 AND id = $3`,
-      [guildId, hex, id],
+       WHERE guild_id = $1 AND hex = $2 AND id = $3 AND channel_id = $4`,
+      [guildId, hex, id, channelId],
     )
     return result.rows[0]
       ? {
@@ -324,6 +331,7 @@ export class PostgresService {
           createdAt: result.rows[0].created_at,
           updatedBy: result.rows[0].updated_by,
           updatedAt: result.rows[0].updated_at,
+          channelId: result.rows[0].channel_id,
         }
       : null
   }

@@ -285,10 +285,10 @@ export class StockpileDataService {
     return true
   }
 
-  public async getStockpileById(guildId: string, hex: string, stockpileId: string) {
+  public async getStockpileById(guildId: string, hex: string, stockpileId: string, channelId: string) {
     const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
     return stockpilesByGuildId[guildId][hex].find(
-      (stockpile) => stockpile.id === stockpileId,
+      (stockpile) => stockpile.id === stockpileId && stockpile.channelId === channelId,
     ) as Stockpile
   }
 
@@ -296,13 +296,14 @@ export class StockpileDataService {
     guildId: string | null,
     hex: string,
     id: string,
+    channelId: string,
     code: string,
     stockpileName: string,
     createdBy: string,
   ): Promise<boolean> {
     if (!guildId || !code) return false
 
-    const currentStockpile = await this.getStockpileById(guildId, hex, id)
+    const currentStockpile = await this.getStockpileById(guildId, hex, id, channelId)
 
     // Check for duplicate stockpile, excluding the current stockpile being edited
     const isDuplicate = await this.isDuplicateStockpile(

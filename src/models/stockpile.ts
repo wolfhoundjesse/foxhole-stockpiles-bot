@@ -5,6 +5,7 @@ export type StorageLocation = {
 
 export type Stockpile = StorageLocation & {
   id: string
+  channelId: string
   code: string
   stockpileName: string
   createdBy: string // discord user id

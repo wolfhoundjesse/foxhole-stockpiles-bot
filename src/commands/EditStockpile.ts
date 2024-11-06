@@ -81,15 +81,20 @@ export class EditStockpile {
     this.stockpileId[interaction.user.id] = stockpileId
     const { guildId } = interaction
 
-    if (!guildId) {
+    if (!guildId || !interaction.channelId) {
       await interaction.reply({
-        content: 'This command can only be used in a server.',
+        content: 'This command can only be used in a server channel.',
         ephemeral: true,
       })
       return
     }
 
-    const stockpile = await this.stockpileDataService.getStockpileById(guildId, hex, stockpileId)
+    const stockpile = await this.stockpileDataService.getStockpileById(
+      guildId,
+      hex,
+      stockpileId,
+      interaction.channelId,
+    )
 
     if (!stockpile) {
       await interaction.reply({
@@ -132,7 +137,7 @@ export class EditStockpile {
     if (!(await checkBotPermissions(interaction))) return
     const { guildId, user } = interaction
 
-    if (!guildId) {
+    if (!guildId || !interaction.channelId) {
       await interaction.reply({
         content: 'This command can only be used in a server.',
         ephemeral: true,
@@ -150,6 +155,7 @@ export class EditStockpile {
       code,
       name,
       user.id,
+      interaction.channelId,
     )
 
     if (!success) {
