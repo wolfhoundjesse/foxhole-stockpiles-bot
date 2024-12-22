@@ -450,4 +450,26 @@ export class StockpileDataService {
       ? `War ${warNumber} - Resistance Phase`
       : `War ${warNumber} - Conquest Phase`
   }
+
+  public async cleanupChannelMessages(channel: any, embedId: string) {
+    try {
+      // Fetch messages after the embed
+      const messages = await channel.messages.fetch({ after: embedId })
+
+      // Bulk delete messages if they're less than 14 days old
+      if (messages.size > 0) {
+        await channel.bulkDelete(messages).catch((error: any) => {
+          // If bulk delete fails (messages > 14 days old), delete them one by one
+          messages.forEach(async (message: any) => {
+            await message.delete().catch(() => {
+              Logger.error('StockpileDataService', `Failed to delete message ${message.id}`)
+            })
+          })
+        })
+        Logger.success('StockpileDataService', `Cleaned up ${messages.size} messages`)
+      }
+    } catch (error) {
+      Logger.error('StockpileDataService', 'Failed to cleanup messages', error)
+    }
+  }
 }
