@@ -335,4 +335,21 @@ export class PostgresService {
         }
       : null
   }
+
+  async registerWarMessageChannel(guildId: string, channelId: string): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO war_message_channels (guild_id, channel_id)
+       VALUES ($1, $2)
+       ON CONFLICT (guild_id, channel_id) DO NOTHING`,
+      [guildId, channelId],
+    )
+  }
+
+  async getWarMessageChannels(guildId: string): Promise<string[]> {
+    const result = await this.pool.query(
+      'SELECT channel_id FROM war_message_channels WHERE guild_id = $1',
+      [guildId],
+    )
+    return result.rows.map((row) => row.channel_id)
+  }
 }

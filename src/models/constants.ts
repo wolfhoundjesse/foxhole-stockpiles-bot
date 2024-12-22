@@ -7,6 +7,8 @@ export const RawCommand = {
   ResetStockpiles: 'reset-stockpiles',
   CleanupMessages: 'cleanup-messages',
   Help: 'help',
+  RegisterWarChannel: 'register-war-channel',
+  PostWarMessage: 'post-war-message',
 } as const
 
 export type CommandType = {
