@@ -1,5 +1,11 @@
-import { Discord, Slash } from 'discordx'
-import { CommandInteraction } from 'discord.js'
+import { Discord, Slash, ButtonComponent } from 'discordx'
+import {
+  CommandInteraction,
+  ButtonInteraction,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js'
 import { Command } from '../models/constants'
 import { checkBotPermissions } from '../utils/permissions'
 import { StockpileDataService } from '../services/stockpile-data-service'
@@ -10,6 +16,7 @@ import { Logger } from '../utils/logger'
 export class PostWarMessage {
   private stockpileService = new StockpileDataService()
   private dataAccessService = new PostgresService()
+  private warSelectionCache = new Map<string, number>() // Store user's war number selection
 
   @Slash({
     name: Command.PostWarMessage,
@@ -19,15 +26,63 @@ export class PostWarMessage {
     if (!(await checkBotPermissions(interaction))) return
 
     try {
-      await interaction.deferReply({ ephemeral: true })
-
       const warNumber = await this.stockpileService.getWarNumber()
-      const message = `======== War ${warNumber} ========`
 
+      const currentWarButton = new ButtonBuilder()
+        .setCustomId('war_current')
+        .setLabel(`Current War (${warNumber})`)
+        .setStyle(ButtonStyle.Primary)
+
+      const nextWarButton = new ButtonBuilder()
+        .setCustomId('war_next')
+        .setLabel(`Next War (${warNumber + 1})`)
+        .setStyle(ButtonStyle.Secondary)
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        currentWarButton,
+        nextWarButton,
+      )
+
+      await interaction.reply({
+        content: 'Which war number should be used in the message?',
+        components: [row],
+        ephemeral: true,
+      })
+    } catch (error) {
+      Logger.error('PostWarMessage', 'Failed to post war message', error)
+      await interaction.reply({
+        content: 'Failed to post war message. Please try again later.',
+        ephemeral: true,
+      })
+    }
+  }
+
+  @ButtonComponent({ id: 'war_current' })
+  async handleCurrentWar(interaction: ButtonInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
+    const warNumber = await this.stockpileService.getWarNumber()
+    await this.postWarMessage(interaction, warNumber)
+  }
+
+  @ButtonComponent({ id: 'war_next' })
+  async handleNextWar(interaction: ButtonInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
+    const warNumber = await this.stockpileService.getWarNumber()
+    await this.postWarMessage(interaction, warNumber + 1)
+  }
+
+  private async postWarMessage(interaction: ButtonInteraction, warNumber: number): Promise<void> {
+    try {
+      await interaction.deferUpdate()
+
+      const message = `======== War ${warNumber} ========`
       const channels = await this.dataAccessService.getWarMessageChannels(interaction.guildId!)
 
       if (channels.length === 0) {
-        await interaction.editReply('No channels are registered for war messages.')
+        await interaction.editReply({
+          content: 'No channels are registered for war messages.',
+          components: [],
+        })
         return
       }
 
@@ -44,12 +99,16 @@ export class PostWarMessage {
         }
       }
 
-      await interaction.editReply(
-        `Posted war message to ${successCount} of ${channels.length} channels.`,
-      )
+      await interaction.editReply({
+        content: `Posted war message to ${successCount} of ${channels.length} channels.`,
+        components: [],
+      })
     } catch (error) {
       Logger.error('PostWarMessage', 'Failed to post war message', error)
-      await interaction.editReply('Failed to post war message. Please try again later.')
+      await interaction.editReply({
+        content: 'Failed to post war message. Please try again later.',
+        components: [],
+      })
     }
   }
 }
