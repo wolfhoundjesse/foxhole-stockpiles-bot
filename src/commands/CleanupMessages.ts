@@ -1,16 +1,14 @@
 import { Discord, Slash } from 'discordx'
 import { ApplicationCommandOptionType, CommandInteraction } from 'discord.js'
-import { injectable } from 'tsyringe'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Logger } from '../utils/logger'
+import { Command } from '../models/constants'
 
 @Discord()
-@injectable()
-export class CleanupCommand {
-  constructor(private stockpileService: StockpileDataService) {}
-
+export class CleanupMessages {
+  private stockpileService = new StockpileDataService()
   @Slash({
-    name: 'cleanup',
+    name: Command.CleanupMessages,
     description: 'Cleans up all messages after the stockpile embed',
   })
   async cleanup(interaction: CommandInteraction): Promise<void> {

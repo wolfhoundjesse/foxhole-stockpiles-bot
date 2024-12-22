@@ -5,6 +5,7 @@ export const RawCommand = {
   SelectFaction: 'select-faction',
   RefreshManifest: 'refresh-manifest',
   ResetStockpiles: 'reset-stockpiles',
+  CleanupMessages: 'cleanup-messages',
   Help: 'help',
 } as const
 
