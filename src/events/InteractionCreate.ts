@@ -49,6 +49,8 @@ export class InteractionCreate {
         interaction.customId === DeleteStockpileIds.CancelButton
       ) {
         await client.executeInteraction(interaction)
+      } else if (interaction.customId === 'war_current' || interaction.customId === 'war_next') {
+        await client.executeInteraction(interaction)
       }
     }
   }
