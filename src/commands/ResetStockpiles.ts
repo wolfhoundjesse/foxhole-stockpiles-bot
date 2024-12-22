@@ -5,7 +5,7 @@ import { Command } from '../models'
 
 @Discord()
 export class ResetStockpilesCommand {
-  constructor(private stockpileDataService: StockpileDataService) {}
+  private stockpileDataService = new StockpileDataService()
 
   @Slash({
     name: Command.ResetStockpiles,
