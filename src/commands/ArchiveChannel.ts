@@ -4,6 +4,7 @@ import {
   TextChannel,
   PermissionFlagsBits,
   ApplicationCommandOptionType,
+  PermissionsBitField,
 } from 'discord.js'
 import { Command } from '../models/constants'
 import { checkBotPermissions } from '../utils/permissions'
@@ -13,6 +14,33 @@ import { Logger } from '../utils/logger'
 @Discord()
 export class ArchiveChannel {
   private readonly dataAccessService = new PostgresService()
+
+  private async checkChannelPermissions(
+    channel: TextChannel,
+    isArchiveChannel: boolean,
+  ): Promise<{ hasPermissions: boolean; missingPermissions: string[] }> {
+    const requiredPermissions = new PermissionsBitField([
+      PermissionFlagsBits.ViewChannel,
+      isArchiveChannel ? PermissionFlagsBits.SendMessages : PermissionFlagsBits.ReadMessageHistory,
+    ])
+
+    const botMember = channel.guild.members.cache.get(channel.client.user.id)
+    if (!botMember) {
+      return { hasPermissions: false, missingPermissions: ['Bot member not found'] }
+    }
+
+    const missingPermissions = []
+    for (const permission of requiredPermissions) {
+      if (!channel.permissionsFor(botMember)?.has(permission)) {
+        missingPermissions.push(PermissionsBitField.Flags[permission])
+      }
+    }
+
+    return {
+      hasPermissions: missingPermissions.length === 0,
+      missingPermissions,
+    }
+  }
 
   @Slash({
     name: Command.ArchiveChannel,
@@ -68,13 +96,33 @@ export class ArchiveChannel {
         return
       }
 
+      // Check source channel permissions
+      const sourceChannel = interaction.channel as TextChannel
+      const sourcePermissions = await this.checkChannelPermissions(sourceChannel, false)
+      if (!sourcePermissions.hasPermissions) {
+        await interaction.reply({
+          content: `Missing permissions in source channel: ${sourcePermissions.missingPermissions.join(', ')}`,
+          ephemeral: true,
+        })
+        return
+      }
+
+      // Check archive channel permissions
+      const archivePermissions = await this.checkChannelPermissions(archiveChannel, true)
+      if (!archivePermissions.hasPermissions) {
+        await interaction.reply({
+          content: `Missing permissions in archive channel: ${archivePermissions.missingPermissions.join(', ')}`,
+          ephemeral: true,
+        })
+        return
+      }
+
       await interaction.deferReply({ ephemeral: true })
 
       // Add war number header
       await archiveChannel.send(`========== War ${warNumber} ==========`)
 
       // Fetch and archive messages
-      const sourceChannel = interaction.channel as TextChannel
       let lastId: string | undefined
       let messageCount = 0
 
