@@ -134,12 +134,61 @@ export default class ArchiveChannel {
         if (messages.size === 0) break
 
         const formattedMessages: string[] = []
-        messages.forEach((message) => {
+        for (const message of messages.values()) {
           const timestamp = message.createdAt.toISOString()
-          const content = `[${timestamp}] ${message.author.username}: ${message.content}`
-          formattedMessages.push(content)
+
+          // Process the message content to resolve mentions
+          let content = message.content
+
+          // Replace user mentions with usernames
+          const userMentionPattern = /<@!?(\d+)>/g
+          const userMentions = [...content.matchAll(userMentionPattern)]
+          for (const mention of userMentions) {
+            try {
+              const userId = mention[1]
+              const user = await interaction.client.users.fetch(userId)
+              content = content.replace(mention[0], `@${user.username}`)
+            } catch (error) {
+              // If we can't fetch the user, leave the mention as is
+              Logger.error('ArchiveChannel', `Failed to resolve user mention: ${mention[0]}`, error)
+            }
+          }
+
+          // Replace channel mentions with channel names
+          const channelMentionPattern = /<#(\d+)>/g
+          const channelMentions = [...content.matchAll(channelMentionPattern)]
+          for (const mention of channelMentions) {
+            try {
+              const channelId = mention[1]
+              const channel = await interaction.guild?.channels.fetch(channelId)
+              content = content.replace(mention[0], `#${channel?.name || 'unknown-channel'}`)
+            } catch (error) {
+              Logger.error(
+                'ArchiveChannel',
+                `Failed to resolve channel mention: ${mention[0]}`,
+                error,
+              )
+            }
+          }
+
+          // Replace role mentions with role names
+          const roleMentionPattern = /<@&(\d+)>/g
+          const roleMentions = [...content.matchAll(roleMentionPattern)]
+          for (const mention of roleMentions) {
+            try {
+              const roleId = mention[1]
+              const role = await interaction.guild?.roles.fetch(roleId)
+              content = content.replace(mention[0], `@${role?.name || 'unknown-role'}`)
+            } catch (error) {
+              Logger.error('ArchiveChannel', `Failed to resolve role mention: ${mention[0]}`, error)
+            }
+          }
+
+          // Format the final message
+          const formattedMessage = `[${timestamp}] ${message.author.username}: ${content}`
+          formattedMessages.push(formattedMessage)
           messageCount++
-        })
+        }
 
         // Process messages in reverse order (oldest first)
         const reversedMessages = formattedMessages.reverse()
