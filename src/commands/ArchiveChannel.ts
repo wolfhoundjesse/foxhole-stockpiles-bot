@@ -12,7 +12,7 @@ import { PostgresService } from '../services/postgres-service'
 import { Logger } from '../utils/logger'
 
 @Discord()
-export class ArchiveChannel {
+export default class ArchiveChannel {
   private readonly dataAccessService = new PostgresService()
 
   private async checkChannelPermissions(
@@ -43,18 +43,18 @@ export class ArchiveChannel {
   }
 
   @Slash({
-    name: Command.ArchiveChannel,
     description: 'Archive this channel to the war archive channel',
+    name: Command.ArchiveChannel,
   })
-  async archive(
-    interaction: CommandInteraction,
+  async execute(
     @SlashOption({
-      name: 'war_number',
       description: 'The war number to archive under',
+      name: 'war_number',
       required: true,
       type: ApplicationCommandOptionType.Integer,
     })
     warNumber: number,
+    interaction: CommandInteraction,
   ): Promise<void> {
     try {
       await interaction.deferReply({ ephemeral: true })
