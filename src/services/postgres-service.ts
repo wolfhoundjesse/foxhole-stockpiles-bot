@@ -6,6 +6,7 @@ import type {
   EmbedsByGuildId,
   Stockpile,
 } from '../models'
+import { Logger } from '../utils/logger'
 
 export class PostgresService {
   private pool: Pool
@@ -368,5 +369,17 @@ export class PostgresService {
       [guildId],
     )
     return result.rows[0]?.channel_id || null
+  }
+
+  async deregisterWarMessageChannel(guildId: string, channelId: string): Promise<void> {
+    try {
+      await this.pool.query(
+        'DELETE FROM war_message_channels WHERE guild_id = $1 AND channel_id = $2',
+        [guildId, channelId],
+      )
+    } catch (error) {
+      Logger.error('PostgresService', 'Failed to deregister war message channel', error)
+      throw error
+    }
   }
 }

@@ -44,4 +44,38 @@ export class RegisterWarMessageChannel {
       })
     }
   }
+
+  @Slash({
+    name: Command.DeregisterWarChannel,
+    description: 'Deregister this channel from war start messages',
+  })
+  async deregister(interaction: CommandInteraction): Promise<void> {
+    if (!(await checkBotPermissions(interaction))) return
+
+    try {
+      const guildId = interaction.guildId
+      const channelId = interaction.channelId
+
+      if (!guildId) {
+        await interaction.reply({
+          content: 'This command can only be used in a server.',
+          ephemeral: true,
+        })
+        return
+      }
+
+      await this.dataAccessService.deregisterWarMessageChannel(guildId, channelId)
+
+      await interaction.reply({
+        content: 'This channel has been deregistered from war start messages!',
+        ephemeral: true,
+      })
+    } catch (error) {
+      Logger.error('RegisterWarMessageChannel', 'Failed to deregister channel', error)
+      await interaction.reply({
+        content: 'Failed to deregister channel. Please try again later.',
+        ephemeral: true,
+      })
+    }
+  }
 }

@@ -11,6 +11,7 @@ export const RawCommand = {
   PostWarMessage: 'post-war-message',
   SetWarArchive: 'set-war-archive',
   ArchiveChannel: 'archive-channel',
+  DeregisterWarChannel: 'deregister-war-channel',
 } as const
 
 export type CommandType = {
