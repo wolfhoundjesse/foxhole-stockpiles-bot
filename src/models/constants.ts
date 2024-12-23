@@ -9,6 +9,8 @@ export const RawCommand = {
   Help: 'help',
   RegisterWarChannel: 'register-war-channel',
   PostWarMessage: 'post-war-message',
+  SetWarArchive: 'set-war-archive',
+  ArchiveChannel: 'archive-channel',
 } as const
 
 export type CommandType = {
@@ -42,4 +44,8 @@ export const DeleteStockpileIds = {
   StockpileSelect: 'delete/stockpile-select',
   ConfirmButton: 'delete/confirm-button',
   CancelButton: 'delete/cancel-button',
+} as const
+
+export const WarArchiveIds = {
+  WarNumberInput: 'war-number-input',
 } as const

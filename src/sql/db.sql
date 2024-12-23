@@ -37,3 +37,9 @@ CREATE TABLE war_message_channels (
   channel_id TEXT NOT NULL,
   PRIMARY KEY (guild_id, channel_id)
 );
+
+ CREATE TABLE IF NOT EXISTS war_archive_channels (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+ );
