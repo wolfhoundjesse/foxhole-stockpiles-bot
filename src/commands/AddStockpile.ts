@@ -1,4 +1,4 @@
-import { Discord, ModalComponent, SelectMenuComponent, Slash } from 'discordx'
+import { Discord, Guard, ModalComponent, SelectMenuComponent, Slash } from 'discordx'
 import {
   CommandInteraction,
   ActionRowBuilder,
@@ -15,8 +15,10 @@ import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, AddStockpileIds } from '../models/constants'
 import { Faction, FactionColors, type FactionType } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class AddStockpile {
   public stockpileDataService = new StockpileDataService()
   private selectedLocations: { [userId: string]: string } = {}

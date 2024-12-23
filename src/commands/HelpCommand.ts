@@ -1,9 +1,11 @@
 import { CommandInteraction, EmbedBuilder } from 'discord.js'
-import { Discord, Slash } from 'discordx'
+import { Discord, Guard, Slash } from 'discordx'
 import { Command } from '../models/constants'
 import { checkBotPermissions } from '../utils/permissions'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class HelpCommand {
   @Slash({ description: 'Display information about available commands', name: Command.Help })
   async help(interaction: CommandInteraction): Promise<void> {

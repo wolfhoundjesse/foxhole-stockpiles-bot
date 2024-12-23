@@ -1,10 +1,12 @@
-import { Discord, Slash } from 'discordx'
+import { Discord, Guard, Slash } from 'discordx'
 import { ApplicationCommandOptionType, CommandInteraction } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Logger } from '../utils/logger'
 import { Command } from '../models/constants'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class CleanupMessages {
   private stockpileService = new StockpileDataService()
   @Slash({

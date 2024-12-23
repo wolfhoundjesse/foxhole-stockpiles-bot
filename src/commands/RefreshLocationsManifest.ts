@@ -1,10 +1,12 @@
-import { Discord, Slash } from 'discordx'
+import { Discord, Guard, Slash } from 'discordx'
 import { CommandInteraction } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service.js'
 import { checkBotPermissions } from '../utils/permissions.js'
 import { Command } from '../models'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class RefreshLocationsManifest {
   public stockpileDataService = new StockpileDataService()
 

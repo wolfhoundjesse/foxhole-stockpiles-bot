@@ -8,13 +8,15 @@ import {
   StringSelectMenuInteraction,
   ButtonInteraction,
 } from 'discord.js'
-import { Discord, Slash, SelectMenuComponent, ButtonComponent } from 'discordx'
+import { Discord, Guard, Slash, SelectMenuComponent, ButtonComponent } from 'discordx'
 import { Command, DeleteStockpileIds } from '../models/constants'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class DeleteStockpile {
   private stockpileDataService = new StockpileDataService()
   private stockpileToDelete: { [userId: string]: string } = {}

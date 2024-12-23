@@ -1,4 +1,4 @@
-import { Discord, Slash, ButtonComponent } from 'discordx'
+import { Discord, Guard, Slash, ButtonComponent } from 'discordx'
 import {
   CommandInteraction,
   ButtonInteraction,
@@ -11,8 +11,10 @@ import { checkBotPermissions } from '../utils/permissions'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { PostgresService } from '../services/postgres-service'
 import { Logger } from '../utils/logger'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class PostWarMessage {
   private stockpileService = new StockpileDataService()
   private dataAccessService = new PostgresService()

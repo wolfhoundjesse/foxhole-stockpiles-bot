@@ -1,4 +1,4 @@
-import { Discord, Slash, SlashOption } from 'discordx'
+import { Discord, Guard, Slash, SlashOption } from 'discordx'
 import {
   CommandInteraction,
   TextChannel,
@@ -10,8 +10,12 @@ import { Command } from '../models/constants'
 import { checkBotPermissions } from '../utils/permissions'
 import { PostgresService } from '../services/postgres-service'
 import { Logger } from '../utils/logger'
+import { CommandPermissions } from '../models/permissions'
+import { PermissionGuard } from '../guards/PermissionGuard'
+import { getPermissionString } from '../utils/types'
 
 @Discord()
+@Guard(PermissionGuard)
 export default class ArchiveChannel {
   private readonly dataAccessService = new PostgresService()
 
@@ -45,6 +49,7 @@ export default class ArchiveChannel {
   @Slash({
     description: 'Archive this channel to the war archive channel',
     name: Command.ArchiveChannel,
+    defaultMemberPermissions: CommandPermissions[Command.ArchiveChannel].defaultMemberPermissions,
   })
   async execute(
     @SlashOption({
@@ -59,7 +64,7 @@ export default class ArchiveChannel {
     try {
       await interaction.deferReply({ ephemeral: true })
 
-      if (!(await checkBotPermissions(interaction))) return
+      if (!(await this.checkCommandPermissions(interaction))) return
 
       // Check if user has manage messages permission
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
@@ -271,5 +276,34 @@ export default class ArchiveChannel {
       chunks.push(array.slice(i, i + size))
     }
     return chunks
+  }
+
+  private async checkCommandPermissions(interaction: CommandInteraction): Promise<boolean> {
+    const commandPerms = CommandPermissions[Command.ArchiveChannel].botPermissions
+
+    if (!interaction.guild) {
+      await interaction.editReply({
+        content: 'This command can only be used in a server.',
+      })
+      return false
+    }
+
+    const botMember = interaction.guild.members.cache.get(interaction.client.user.id)
+    if (!botMember) return false
+
+    const missingPermissions = commandPerms.filter(
+      (permission) => !botMember.permissions.has(permission),
+    )
+
+    if (missingPermissions.length > 0) {
+      const permissionNames = missingPermissions.map((perm) => getPermissionString(perm)).join(', ')
+
+      await interaction.editReply({
+        content: `I need the following permissions: ${permissionNames}`,
+      })
+      return false
+    }
+
+    return true
   }
 }

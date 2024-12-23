@@ -1,10 +1,11 @@
-import { Discord, Slash } from 'discordx'
+import { Discord, Guard, Slash } from 'discordx'
 import { CommandInteraction, EmbedBuilder } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
-
+import { PermissionGuard } from '../guards/PermissionGuard'
 @Discord()
+@Guard(PermissionGuard)
 export class ResetStockpilesCommand {
   private stockpileDataService = new StockpileDataService()
 

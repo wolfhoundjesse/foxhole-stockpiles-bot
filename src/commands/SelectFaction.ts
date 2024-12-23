@@ -5,12 +5,13 @@ import {
   type CommandInteraction,
   ButtonInteraction,
 } from 'discord.js'
-import { Discord, Slash, ButtonComponent } from 'discordx'
+import { Discord, Guard, Slash, ButtonComponent } from 'discordx'
 import { Command, Faction, SelectFactionIds, type FactionType } from '../models'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { checkBotPermissions } from '../utils/permissions'
-
+import { PermissionGuard } from '../guards/PermissionGuard'
 @Discord()
+@Guard(PermissionGuard)
 export class SelectFaction {
   private stockpileDataService = new StockpileDataService()
 

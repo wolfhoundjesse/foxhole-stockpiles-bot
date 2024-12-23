@@ -10,13 +10,15 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js'
-import { Discord, Slash, SlashOption, SelectMenuComponent, ModalComponent } from 'discordx'
+import { Discord, Guard, Slash, SlashOption, SelectMenuComponent, ModalComponent } from 'discordx'
 import { Command, EditStockpileIds } from '../models/constants'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class EditStockpile {
   private stockpileDataService = new StockpileDataService()
   private hex: { [userId: string]: string } = {}

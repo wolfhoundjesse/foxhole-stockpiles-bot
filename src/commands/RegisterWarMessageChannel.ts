@@ -1,11 +1,13 @@
-import { Discord, Slash } from 'discordx'
+import { Discord, Guard, Slash } from 'discordx'
 import { CommandInteraction } from 'discord.js'
 import { Command } from '../models/constants'
 import { checkBotPermissions } from '../utils/permissions'
 import { PostgresService } from '../services/postgres-service'
 import { Logger } from '../utils/logger'
+import { PermissionGuard } from '../guards/PermissionGuard'
 
 @Discord()
+@Guard(PermissionGuard)
 export class RegisterWarMessageChannel {
   private readonly dataAccessService = new PostgresService()
 

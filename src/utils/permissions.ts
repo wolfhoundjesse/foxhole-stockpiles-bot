@@ -14,8 +14,13 @@ export async function checkBotPermissions(
     | ModalSubmitInteraction
     | ButtonInteraction,
 ): Promise<boolean> {
-  return true
-  if (!interaction.guild) return false
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: 'This command can only be used in a server.',
+      ephemeral: true,
+    })
+    return false
+  }
 
   const botMember = interaction.guild.members.cache.get(interaction.client.user.id)
   if (!botMember) return false
@@ -28,24 +33,19 @@ export async function checkBotPermissions(
     'ManageMessages',
   ])
 
-  // Log the bot's permissions and guild information
-  console.log('=== Bot Permissions Check ===')
-  console.log(`Guild: ${interaction.guild.name} (${interaction.guild.id})`)
-  console.log('Current Bot Permissions:', botMember.permissions.toArray())
-  console.log('Required Permissions:', requiredPermissions.toArray())
-
   const hasPermissions = botMember.permissions.has(requiredPermissions)
 
   if (!hasPermissions) {
-    console.log('Permission check failed!')
+    const missingPermissions = requiredPermissions
+      .toArray()
+      .filter((perm) => !botMember.permissions.has(perm))
+
     await interaction.reply({
-      content:
-        'I need the following permissions: View Channels, Send Messages, Embed Links, Read Message History, and Manage Messages',
+      content: `I need the following permissions: ${missingPermissions.join(', ')}`,
       ephemeral: true,
     })
     return false
   }
 
-  console.log('Permission check passed!')
   return true
 }
