@@ -123,6 +123,7 @@ export default class ArchiveChannel {
       // Fetch and archive messages
       let lastId: string | undefined
       let messageCount = 0
+      const CHUNK_SIZE = 1500 // Reduced from 1900 to ensure we stay well under Discord's limit
 
       while (true) {
         const messages = await sourceChannel.messages.fetch({
@@ -140,10 +141,19 @@ export default class ArchiveChannel {
           messageCount++
         })
 
-        // Send messages in chunks to avoid Discord's message length limit
-        const messageChunks = this.chunkArray(formattedMessages.reverse(), 1900)
+        // Send messages in smaller chunks
+        const messageChunks = this.chunkArray(formattedMessages.reverse(), CHUNK_SIZE)
         for (const chunk of messageChunks) {
-          await archiveChannel.send('```\n' + chunk.join('\n') + '\n```')
+          const content = '```\n' + chunk.join('\n') + '\n```'
+          if (content.length > 2000) {
+            // If still too long, split further
+            const subChunks = this.chunkArray(chunk, Math.floor(CHUNK_SIZE / 2))
+            for (const subChunk of subChunks) {
+              await archiveChannel.send('```\n' + subChunk.join('\n') + '\n```')
+            }
+          } else {
+            await archiveChannel.send(content)
+          }
         }
 
         lastId = messages.last()?.id
