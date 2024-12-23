@@ -20,28 +20,24 @@ import { checkBotPermissions } from '../utils/permissions'
 export class AddStockpile {
   public stockpileDataService = new StockpileDataService()
   private selectedLocations: { [userId: string]: string } = {}
+  private hexPages: { [userId: string]: number } = {}
+  private readonly ITEMS_PER_PAGE = 23
 
   @Slash({ description: 'Add a stockpile', name: Command.AddStockpile })
   async addStockpile(interaction: CommandInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
     const faction = await this.getFaction(interaction)
-    if (faction === Faction.None) {
-      return
-    }
+    if (faction === Faction.None) return
+
+    this.hexPages[interaction.user.id] = 0
+
     const storageLocationsByRegion =
       await this.stockpileDataService.getStorageLocationsByRegion(faction)
-
-    const hexSelectMenu = new StringSelectMenuBuilder()
-      .setCustomId(AddStockpileIds.HexMenu)
-      .setPlaceholder('Region/Hex')
-      .addOptions(
-        // limit to the first 25
-        Object.keys(storageLocationsByRegion)
-          .slice(0, 25)
-          .map((key) => {
-            return new StringSelectMenuOptionBuilder().setLabel(key).setValue(key)
-          }),
-      )
+    const hexSelectMenu = this.createHexSelectMenu(
+      Object.keys(storageLocationsByRegion),
+      this.hexPages[interaction.user.id],
+      interaction.user.id,
+    )
 
     const stockpileMenu = new StringSelectMenuBuilder()
       .setCustomId(AddStockpileIds.StockpileMenu)
@@ -51,7 +47,7 @@ export class AddStockpile {
         value: 'add-stockpile',
         description: 'Add a stockpile to the database',
       })
-      .setDisabled(true) // initially disabled
+      .setDisabled(true)
 
     const hexRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(hexSelectMenu)
     const stockpileRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -65,10 +61,87 @@ export class AddStockpile {
     })
   }
 
+  private createHexSelectMenu(
+    hexes: string[],
+    currentPage: number,
+    userId: string,
+  ): StringSelectMenuBuilder {
+    const totalPages = Math.ceil(hexes.length / this.ITEMS_PER_PAGE)
+    const startIdx = currentPage * this.ITEMS_PER_PAGE
+    const pageHexes = hexes.slice(startIdx, startIdx + this.ITEMS_PER_PAGE)
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(AddStockpileIds.HexMenu)
+      .setPlaceholder(`Region/Hex (Page ${currentPage + 1}/${totalPages})`)
+
+    if (totalPages > 1) {
+      if (currentPage > 0) {
+        menu.addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('⬅️ Previous Page')
+            .setValue(`prev_page_${userId}`),
+        )
+      }
+      if (currentPage < totalPages - 1) {
+        menu.addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('➡️ Next Page')
+            .setValue(`next_page_${userId}`),
+        )
+      }
+    }
+
+    menu.addOptions(
+      pageHexes.map((hex) => new StringSelectMenuOptionBuilder().setLabel(hex).setValue(hex)),
+    )
+
+    return menu
+  }
+
   @SelectMenuComponent({ id: AddStockpileIds.HexMenu })
   async handleLocationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
-    const selectedHex = interaction.values[0] // Get selected location
+    const selectedValue = interaction.values[0]
+
+    if (selectedValue.startsWith('prev_page_') || selectedValue.startsWith('next_page_')) {
+      const faction = await this.getFaction(interaction)
+      if (faction === Faction.None) return
+
+      this.hexPages[interaction.user.id] = selectedValue.startsWith('prev_page_')
+        ? this.hexPages[interaction.user.id] - 1
+        : this.hexPages[interaction.user.id] + 1
+
+      const storageLocationsByRegion =
+        await this.stockpileDataService.getStorageLocationsByRegion(faction)
+      const hexSelectMenu = this.createHexSelectMenu(
+        Object.keys(storageLocationsByRegion),
+        this.hexPages[interaction.user.id],
+        interaction.user.id,
+      )
+
+      const stockpileMenu = new StringSelectMenuBuilder()
+        .setCustomId(AddStockpileIds.StockpileMenu)
+        .setPlaceholder('Select a stockpile')
+        .setDisabled(true)
+        .addOptions({
+          label: 'Add Stockpile',
+          value: 'add-stockpile',
+          description: 'Add a stockpile to the database',
+        })
+
+      const hexRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(hexSelectMenu)
+      const stockpileRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        stockpileMenu,
+      )
+
+      await interaction.update({
+        content: 'Please select a storage location.',
+        components: [hexRow, stockpileRow],
+      })
+      return
+    }
+
+    const selectedHex = selectedValue
     const faction = await this.getFaction(interaction)
     if (faction === Faction.None) {
       return
