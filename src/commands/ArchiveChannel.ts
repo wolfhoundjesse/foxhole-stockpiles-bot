@@ -57,22 +57,22 @@ export class ArchiveChannel {
     warNumber: number,
   ): Promise<void> {
     try {
+      await interaction.deferReply({ ephemeral: true })
+
       if (!(await checkBotPermissions(interaction))) return
 
       // Check if user has manage messages permission
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
-        await interaction.reply({
+        await interaction.editReply({
           content: 'You need manage messages permission to use this command.',
-          ephemeral: true,
         })
         return
       }
 
       const guildId = interaction.guildId
       if (!guildId) {
-        await interaction.reply({
+        await interaction.editReply({
           content: 'This command can only be used in a server.',
-          ephemeral: true,
         })
         return
       }
@@ -80,18 +80,16 @@ export class ArchiveChannel {
       // Get the archive channel
       const archiveChannelId = await this.dataAccessService.getWarArchiveChannel(guildId)
       if (!archiveChannelId) {
-        await interaction.reply({
+        await interaction.editReply({
           content: 'No war archive channel has been set. Use /set-war-archive first.',
-          ephemeral: true,
         })
         return
       }
 
       const archiveChannel = await interaction.guild?.channels.fetch(archiveChannelId)
       if (!archiveChannel || !(archiveChannel instanceof TextChannel)) {
-        await interaction.reply({
+        await interaction.editReply({
           content: 'Could not find the war archive channel.',
-          ephemeral: true,
         })
         return
       }
@@ -100,9 +98,8 @@ export class ArchiveChannel {
       const sourceChannel = interaction.channel as TextChannel
       const sourcePermissions = await this.checkChannelPermissions(sourceChannel, false)
       if (!sourcePermissions.hasPermissions) {
-        await interaction.reply({
+        await interaction.editReply({
           content: `Missing permissions in source channel: ${sourcePermissions.missingPermissions.join(', ')}`,
-          ephemeral: true,
         })
         return
       }
@@ -110,17 +107,14 @@ export class ArchiveChannel {
       // Check archive channel permissions
       const archivePermissions = await this.checkChannelPermissions(archiveChannel, true)
       if (!archivePermissions.hasPermissions) {
-        await interaction.reply({
+        await interaction.editReply({
           content: `Missing permissions in archive channel: ${archivePermissions.missingPermissions.join(', ')}`,
-          ephemeral: true,
         })
         return
       }
 
-      // All checks passed, now defer the reply before long operation
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Starting archive process...',
-        ephemeral: true,
       })
 
       // Add war number header
@@ -161,16 +155,9 @@ export class ArchiveChannel {
     } catch (error) {
       Logger.error('ArchiveChannel', 'Failed to archive channel', error)
       try {
-        if (interaction.replied || interaction.deferred) {
-          await interaction.editReply({
-            content: 'Failed to archive channel. Please try again later.',
-          })
-        } else {
-          await interaction.reply({
-            content: 'Failed to archive channel. Please try again later.',
-            ephemeral: true,
-          })
-        }
+        await interaction.editReply({
+          content: 'Failed to archive channel. Please try again later.',
+        })
       } catch (e) {
         Logger.error('ArchiveChannel', 'Failed to send error message', e)
       }
