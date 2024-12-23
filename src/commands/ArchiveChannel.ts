@@ -161,9 +161,9 @@ export class ArchiveChannel {
           content: 'Failed to archive channel. Please try again later.',
         })
       } else {
-        await interaction.reply({
+        await interaction.deferReply({ ephemeral: true })
+        await interaction.editReply({
           content: 'Failed to archive channel. Please try again later.',
-          ephemeral: true,
         })
       }
     }
