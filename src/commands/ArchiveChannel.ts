@@ -160,10 +160,20 @@ export class ArchiveChannel {
       })
     } catch (error) {
       Logger.error('ArchiveChannel', 'Failed to archive channel', error)
-      await interaction.reply({
-        content: 'Failed to archive channel. Please try again later.',
-        ephemeral: true,
-      })
+      try {
+        if (interaction.replied || interaction.deferred) {
+          await interaction.editReply({
+            content: 'Failed to archive channel. Please try again later.',
+          })
+        } else {
+          await interaction.reply({
+            content: 'Failed to archive channel. Please try again later.',
+            ephemeral: true,
+          })
+        }
+      } catch (e) {
+        Logger.error('ArchiveChannel', 'Failed to send error message', e)
+      }
     }
   }
 
