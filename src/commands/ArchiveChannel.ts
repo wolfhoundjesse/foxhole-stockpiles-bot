@@ -123,7 +123,7 @@ export default class ArchiveChannel {
       // Fetch and archive messages
       let lastId: string | undefined
       let messageCount = 0
-      const CHUNK_SIZE = 1500 // Reduced from 1900 to ensure we stay well under Discord's limit
+      const MAX_MESSAGE_LENGTH = 1800 // Conservative limit for Discord messages
 
       while (true) {
         const messages = await sourceChannel.messages.fetch({
@@ -141,19 +141,39 @@ export default class ArchiveChannel {
           messageCount++
         })
 
-        // Send messages in smaller chunks
-        const messageChunks = this.chunkArray(formattedMessages.reverse(), CHUNK_SIZE)
-        for (const chunk of messageChunks) {
-          const content = '```\n' + chunk.join('\n') + '\n```'
-          if (content.length > 2000) {
-            // If still too long, split further
-            const subChunks = this.chunkArray(chunk, Math.floor(CHUNK_SIZE / 2))
-            for (const subChunk of subChunks) {
-              await archiveChannel.send('```\n' + subChunk.join('\n') + '\n```')
+        // Process messages in reverse order (oldest first)
+        const reversedMessages = formattedMessages.reverse()
+        let currentChunk: string[] = []
+        let currentLength = 0
+
+        for (const message of reversedMessages) {
+          // Calculate new length including the message and a newline
+          const messageLength = message.length + 1 // +1 for newline
+
+          // If adding this message would exceed the limit, send the current chunk
+          if (currentLength + messageLength > MAX_MESSAGE_LENGTH) {
+            if (currentChunk.length > 0) {
+              await archiveChannel.send('```\n' + currentChunk.join('\n') + '\n```')
+              currentChunk = []
+              currentLength = 0
+            }
+          }
+
+          // If the message itself is too long, split it
+          if (messageLength > MAX_MESSAGE_LENGTH) {
+            const parts = this.splitLongMessage(message, MAX_MESSAGE_LENGTH)
+            for (const part of parts) {
+              await archiveChannel.send('```\n' + part + '\n```')
             }
           } else {
-            await archiveChannel.send(content)
+            currentChunk.push(message)
+            currentLength += messageLength
           }
+        }
+
+        // Send any remaining messages
+        if (currentChunk.length > 0) {
+          await archiveChannel.send('```\n' + currentChunk.join('\n') + '\n```')
         }
 
         lastId = messages.last()?.id
@@ -172,6 +192,28 @@ export default class ArchiveChannel {
         Logger.error('ArchiveChannel', 'Failed to send error message', e)
       }
     }
+  }
+
+  private splitLongMessage(message: string, maxLength: number): string[] {
+    const parts: string[] = []
+    let remainingMessage = message
+
+    while (remainingMessage.length > 0) {
+      // Find a good breaking point
+      let splitPoint = maxLength
+      if (remainingMessage.length > maxLength) {
+        // Try to split at the last space before the limit
+        const lastSpace = remainingMessage.lastIndexOf(' ', maxLength)
+        if (lastSpace > 0) {
+          splitPoint = lastSpace
+        }
+      }
+
+      parts.push(remainingMessage.slice(0, splitPoint))
+      remainingMessage = remainingMessage.slice(splitPoint).trim()
+    }
+
+    return parts
   }
 
   private chunkArray(array: string[], size: number): string[][] {
