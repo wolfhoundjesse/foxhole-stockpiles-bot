@@ -151,16 +151,21 @@ export class ArchiveChannel {
         lastId = messages.last()?.id
       }
 
-      await interaction.followUp({
+      await interaction.editReply({
         content: `Successfully archived ${messageCount} messages!`,
-        ephemeral: true,
       })
     } catch (error) {
       Logger.error('ArchiveChannel', 'Failed to archive channel', error)
-      await interaction.followUp({
-        content: 'Failed to archive channel. Please try again later.',
-        ephemeral: true,
-      })
+      if (interaction.deferred) {
+        await interaction.editReply({
+          content: 'Failed to archive channel. Please try again later.',
+        })
+      } else {
+        await interaction.reply({
+          content: 'Failed to archive channel. Please try again later.',
+          ephemeral: true,
+        })
+      }
     }
   }
 
