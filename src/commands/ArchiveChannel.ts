@@ -56,9 +56,9 @@ export class ArchiveChannel {
     })
     warNumber: number,
   ): Promise<void> {
-    if (!(await checkBotPermissions(interaction))) return
-
     try {
+      if (!(await checkBotPermissions(interaction))) return
+
       // Check if user has manage messages permission
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
         await interaction.reply({
@@ -117,7 +117,11 @@ export class ArchiveChannel {
         return
       }
 
-      await interaction.deferReply({ ephemeral: true })
+      // All checks passed, now defer the reply before long operation
+      await interaction.reply({
+        content: 'Starting archive process...',
+        ephemeral: true,
+      })
 
       // Add war number header
       await archiveChannel.send(`========== War ${warNumber} ==========`)
@@ -156,16 +160,10 @@ export class ArchiveChannel {
       })
     } catch (error) {
       Logger.error('ArchiveChannel', 'Failed to archive channel', error)
-      if (interaction.deferred) {
-        await interaction.editReply({
-          content: 'Failed to archive channel. Please try again later.',
-        })
-      } else {
-        await interaction.deferReply({ ephemeral: true })
-        await interaction.editReply({
-          content: 'Failed to archive channel. Please try again later.',
-        })
-      }
+      await interaction.reply({
+        content: 'Failed to archive channel. Please try again later.',
+        ephemeral: true,
+      })
     }
   }
 
