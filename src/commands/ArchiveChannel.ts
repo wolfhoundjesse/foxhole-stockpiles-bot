@@ -38,7 +38,7 @@ export class ArchiveChannel {
 
     return {
       hasPermissions: missingPermissions.length === 0,
-      missingPermissions,
+      missingPermissions: missingPermissions.map((permission) => permission.toString()),
     }
   }
 
