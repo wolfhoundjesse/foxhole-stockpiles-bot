@@ -38,6 +38,34 @@ export class HelpCommand {
           value: 'Manually refresh the locations manifest (updates available storage locations).',
         },
         {
+          name: '/reset-stockpiles',
+          value: 'Reset all stockpiles for this server.',
+        },
+        {
+          name: '/cleanup-messages',
+          value: 'Clean up all messages after the stockpile embed.',
+        },
+        {
+          name: '/register-war-channel',
+          value: 'Register this channel for war start messages.',
+        },
+        {
+          name: '/deregister-war-channel',
+          value: 'Deregister this channel from war start messages.',
+        },
+        {
+          name: '/post-war-message',
+          value: 'Post a war start message in registered channels.',
+        },
+        {
+          name: '/set-war-archive',
+          value: 'Set this channel as the war archive channel.',
+        },
+        {
+          name: '/archive-channel',
+          value: 'Archive this channel to the war archive channel.',
+        },
+        {
           name: '/help',
           value: 'Display this help message.',
         },
