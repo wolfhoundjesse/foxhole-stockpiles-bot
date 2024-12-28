@@ -331,6 +331,7 @@ export class StockpileDataService {
     if (!guildId || !code) return false
 
     const currentStockpile = await this.getStockpileById(guildId, hex, id, channelId)
+    Logger.debug('StockpileDataService', 'Current stockpile', currentStockpile)
 
     // Check for duplicate stockpile, excluding the current stockpile being edited
     const isDuplicate = await this.isDuplicateStockpile(
