@@ -329,7 +329,15 @@ export class StockpileDataService {
     createdBy: string,
   ): Promise<boolean> {
     if (!guildId || !code) return false
-
+    Logger.debug('StockpileDataService', 'Editing stockpile', {
+      guildId,
+      hex,
+      id,
+      channelId,
+      code,
+      stockpileName,
+      createdBy,
+    })
     const currentStockpile = await this.getStockpileById(guildId, hex, id, channelId)
     Logger.debug('StockpileDataService', 'Current stockpile', currentStockpile)
 
