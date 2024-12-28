@@ -154,10 +154,10 @@ export class EditStockpile {
       guildId,
       this.hex[interaction.user.id],
       this.stockpileId[interaction.user.id],
+      interaction.channelId,
       code,
       name,
       user.id,
-      interaction.channelId,
     )
 
     if (!success) {
