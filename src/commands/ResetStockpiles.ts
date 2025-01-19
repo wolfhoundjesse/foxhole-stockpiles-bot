@@ -4,6 +4,7 @@ import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
 import { PermissionGuard } from '../guards/PermissionGuard'
+import { addHelpTip } from '../utils/embed'
 @Discord()
 @Guard(PermissionGuard)
 export class ResetStockpilesCommand {
@@ -51,10 +52,12 @@ export class ResetStockpilesCommand {
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
     const color = FactionColors[faction]
 
-    return new EmbedBuilder()
-      .setTitle(embedTitle)
-      .setColor(color)
-      .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
-      .setTimestamp()
+    return addHelpTip(
+      new EmbedBuilder()
+        .setTitle(embedTitle)
+        .setColor(color)
+        .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
+        .setTimestamp(),
+    )
   }
 }

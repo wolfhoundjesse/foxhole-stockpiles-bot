@@ -16,6 +16,7 @@ import { StockpileDataService } from '../services/stockpile-data-service'
 import { FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
 import { PermissionGuard } from '../guards/PermissionGuard'
+import { addHelpTip } from '../utils/embed'
 
 @Discord()
 @Guard(PermissionGuard)
@@ -203,11 +204,13 @@ export class EditStockpile {
     const color = FactionColors[faction]
 
     if (!stockpiles) {
-      return new EmbedBuilder()
-        .setTitle(embedTitle)
-        .setColor(color)
-        .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
-        .setTimestamp()
+      return addHelpTip(
+        new EmbedBuilder()
+          .setTitle(embedTitle)
+          .setColor(color)
+          .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
+          .setTimestamp(),
+      )
     }
 
     const stockpileFields = Object.keys(stockpiles).map((hex) => {
@@ -223,10 +226,12 @@ export class EditStockpile {
       }
     })
 
-    return new EmbedBuilder()
-      .setTitle(embedTitle)
-      .setColor(color)
-      .addFields(stockpileFields)
-      .setTimestamp()
+    return addHelpTip(
+      new EmbedBuilder()
+        .setTitle(embedTitle)
+        .setColor(color)
+        .addFields(stockpileFields)
+        .setTimestamp(),
+    )
   }
 }

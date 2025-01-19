@@ -14,6 +14,7 @@ import { StockpileDataService } from '../services/stockpile-data-service'
 import { FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
 import { PermissionGuard } from '../guards/PermissionGuard'
+import { addHelpTip } from '../utils/embed'
 
 @Discord()
 @Guard(PermissionGuard)
@@ -175,17 +176,18 @@ export class DeleteStockpile {
 
   private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
-    const warNumber = await this.stockpileDataService.getWarNumber()
-    const isResistancePhase = await this.stockpileDataService.isResistancePhase()
+    const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
     const color = FactionColors[faction]
 
     if (!stockpiles) {
-      return new EmbedBuilder()
-        .setTitle(`War ${warNumber} ${isResistancePhase ? 'Resistance' : 'Conquest'} Stockpiles`)
-        .setColor(color)
-        .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
-        .setTimestamp()
+      return addHelpTip(
+        new EmbedBuilder()
+          .setTitle(embedTitle)
+          .setColor(color)
+          .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
+          .setTimestamp(),
+      )
     }
 
     const stockpileFields = Object.keys(stockpiles).map((hex) => {
@@ -201,10 +203,12 @@ export class DeleteStockpile {
       }
     })
 
-    return new EmbedBuilder()
-      .setTitle(`War ${warNumber} ${isResistancePhase ? 'Resistance' : 'Conquest'} Stockpiles`)
-      .setColor(color)
-      .addFields(stockpileFields)
-      .setTimestamp()
+    return addHelpTip(
+      new EmbedBuilder()
+        .setTitle(embedTitle)
+        .setColor(color)
+        .addFields(stockpileFields)
+        .setTimestamp(),
+    )
   }
 }
