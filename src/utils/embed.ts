@@ -8,7 +8,15 @@ export const addHelpTip = (
     .setLabel('Add Stockpile')
     .setStyle(ButtonStyle.Primary)
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addStockpileButton)
+  const editStockpileButton = new ButtonBuilder()
+    .setCustomId('edit-stockpile')
+    .setLabel('Edit Stockpile')
+    .setStyle(ButtonStyle.Secondary)
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    addStockpileButton,
+    editStockpileButton,
+  )
 
   return {
     embed: embed.setFooter({

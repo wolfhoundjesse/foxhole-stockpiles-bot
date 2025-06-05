@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ButtonBuilder,
+  ButtonInteraction,
 } from 'discord.js'
 import { Discord, Guard, Slash, SlashOption, SelectMenuComponent, ModalComponent } from 'discordx'
 import { Command, EditStockpileIds } from '../models/constants'
@@ -28,7 +29,7 @@ export class EditStockpile {
   private stockpileId: { [userId: string]: string } = {}
 
   @Slash({ description: 'Edit an existing stockpile', name: Command.EditStockpile })
-  async editStockpile(interaction: CommandInteraction): Promise<void> {
+  async editStockpile(interaction: CommandInteraction | ButtonInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
     const { guildId } = interaction
 

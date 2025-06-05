@@ -9,10 +9,12 @@ import {
   Command,
 } from '../models/constants'
 import { AddStockpile } from '../commands/AddStockpile'
+import { EditStockpile } from '../commands/EditStockpile'
 
 @Discord()
 export class InteractionCreate {
   private addStockpile = new AddStockpile()
+  private editStockpile = new EditStockpile()
 
   @On({ event: 'interactionCreate' })
   async onInteractionCreate([interaction]: ArgsOf<'interactionCreate'>, client: Client) {
@@ -48,6 +50,16 @@ export class InteractionCreate {
       if (interaction.customId === 'add-stockpile') {
         try {
           await this.addStockpile.addStockpile(interaction)
+        } catch (error) {
+          console.error(error)
+          await interaction.reply({
+            content: 'An error occurred while executing the command.',
+            ephemeral: true,
+          })
+        }
+      } else if (interaction.customId === 'edit-stockpile') {
+        try {
+          await this.editStockpile.editStockpile(interaction)
         } catch (error) {
           console.error(error)
           await interaction.reply({
