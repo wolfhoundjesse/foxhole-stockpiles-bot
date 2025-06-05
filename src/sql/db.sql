@@ -30,7 +30,8 @@ CREATE TABLE embedded_messages (
   guild_id TEXT REFERENCES guilds(guild_id),
   channel_id TEXT NOT NULL,
   message_id TEXT NOT NULL,
-  PRIMARY KEY (guild_id, channel_id, message_id)
+  PRIMARY KEY (guild_id, channel_id, message_id),
+  UNIQUE (guild_id)
 );
 
 CREATE TABLE war_message_channels (
