@@ -14,7 +14,8 @@ CREATE TABLE stockpiles (
   created_by TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_by TEXT,
-  updated_at TIMESTAMP
+  updated_at TIMESTAMP,
+  channel_id TEXT NOT NULL
 );
 
 CREATE TABLE locations_manifest (
