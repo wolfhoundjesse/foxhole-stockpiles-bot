@@ -10,6 +10,8 @@ import {
   StringSelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
+  ButtonBuilder,
+  ButtonInteraction,
 } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, AddStockpileIds } from '../models/constants'
@@ -28,7 +30,7 @@ export class AddStockpile {
   private readonly ITEMS_PER_PAGE = 23
 
   @Slash({ description: 'Add a stockpile', name: Command.AddStockpile })
-  async addStockpile(interaction: CommandInteraction): Promise<void> {
+  async addStockpile(interaction: CommandInteraction | ButtonInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
     const faction = await this.getFaction(interaction)
     if (faction === Faction.None) return
@@ -58,11 +60,19 @@ export class AddStockpile {
       stockpileMenu,
     )
 
-    await interaction.reply({
-      content: 'Please select a storage location.',
-      components: [hexRow, stockpileRow],
-      ephemeral: true,
-    })
+    if (interaction.isButton()) {
+      await interaction.reply({
+        content: 'Please select a storage location.',
+        components: [hexRow, stockpileRow],
+        ephemeral: true,
+      })
+    } else {
+      await interaction.reply({
+        content: 'Please select a storage location.',
+        components: [hexRow, stockpileRow],
+        ephemeral: true,
+      })
+    }
   }
 
   private createHexSelectMenu(
@@ -277,7 +287,7 @@ export class AddStockpile {
     delete this.selectedLocations[interaction.user.id]
 
     // Create an embed with the stockpile details
-    const embed = await this.createStockpilesEmbed(guildId)
+    const { embed, components } = await this.createStockpilesEmbed(guildId)
     const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
     const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
 
@@ -286,7 +296,7 @@ export class AddStockpile {
       if (channel) {
         try {
           const message = await channel.messages.fetch(embedByGuildId.embeddedMessageId)
-          await message.edit({ embeds: [embed] })
+          await message.edit({ embeds: [embed], components })
           await interaction.reply({ content: 'Stockpile list updated.', ephemeral: true })
         } catch (error) {
           // If we can't access the message, delete the old message ID and create a new one
@@ -296,6 +306,7 @@ export class AddStockpile {
           // Create new message
           const message = await interaction.reply({
             embeds: [embed],
+            components,
             fetchReply: true,
           })
           // Save the new message ID
@@ -309,6 +320,7 @@ export class AddStockpile {
     } else {
       const message = await interaction.reply({
         embeds: [embed],
+        components,
         fetchReply: true,
       })
       await this.stockpileDataService.saveEmbeddedMessageId(
@@ -320,29 +332,35 @@ export class AddStockpile {
   }
 
   private async getFaction(
-    interaction: CommandInteraction | StringSelectMenuInteraction,
+    interaction: CommandInteraction | ButtonInteraction | StringSelectMenuInteraction,
   ): Promise<FactionType> {
     if (!(await checkBotPermissions(interaction))) return Faction.None
     const guildId = interaction.guildId
     if (!guildId) {
-      await interaction.reply({
-        content: 'This command can only be used in a server.',
-        ephemeral: true,
-      })
+      if (interaction.isButton() || interaction.isCommand()) {
+        await interaction.reply({
+          content: 'This command can only be used in a server.',
+          ephemeral: true,
+        })
+      }
       return Faction.None
     }
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
     if (faction === Faction.None) {
-      await interaction.reply({
-        content: 'You must select a faction before adding stockpiles. (use /select-faction)',
-        ephemeral: true,
-      })
+      if (interaction.isButton() || interaction.isCommand()) {
+        await interaction.reply({
+          content: 'You must select a faction before adding stockpiles. (use /select-faction)',
+          ephemeral: true,
+        })
+      }
       return Faction.None
     }
     return faction
   }
 
-  private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+  private async createStockpilesEmbed(
+    guildId: string,
+  ): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] }> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)

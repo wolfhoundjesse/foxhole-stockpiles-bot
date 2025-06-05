@@ -4,6 +4,7 @@ import {
   EmbedBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
+  ButtonBuilder,
 } from 'discord.js'
 import { Discord, Guard, Slash, SelectMenuComponent } from 'discordx'
 import { Command, ResetStockpileTimerIds } from '../models/constants'
@@ -100,19 +101,20 @@ export class ResetStockpileTimer {
       })
 
       // Create and update embed
-      const embed = await this.createStockpilesEmbed(guildId)
+      const { embed, components } = await this.createStockpilesEmbed(guildId)
       const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
       const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
 
       if (embeddedMessageExists && interaction.channel?.isTextBased()) {
         try {
           const message = await interaction.channel.messages.fetch(embedByGuildId.embeddedMessageId)
-          await message.edit({ embeds: [embed] })
+          await message.edit({ embeds: [embed], components })
         } catch (error) {
           // If we can't access the message, create a new one
           await this.stockpileDataService.saveEmbeddedMessageId(guildId, '', '')
           const newMessage = await interaction.followUp({
             embeds: [embed],
+            components,
             fetchReply: true,
           })
           if (newMessage && 'id' in newMessage) {
@@ -133,7 +135,9 @@ export class ResetStockpileTimer {
     }
   }
 
-  private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+  private async createStockpilesEmbed(
+    guildId: string,
+  ): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] }> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)

@@ -9,6 +9,7 @@ import {
   StringSelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
+  ButtonBuilder,
 } from 'discord.js'
 import { Discord, Guard, Slash, SlashOption, SelectMenuComponent, ModalComponent } from 'discordx'
 import { Command, EditStockpileIds } from '../models/constants'
@@ -168,14 +169,14 @@ export class EditStockpile {
     delete this.hex[interaction.user.id]
     delete this.stockpileId[interaction.user.id]
 
-    const embed = await this.createStockpilesEmbed(guildId)
+    const { embed, components } = await this.createStockpilesEmbed(guildId)
     const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
     const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
     if (embeddedMessageExists) {
       const channel = interaction.channel
       if (channel) {
         const message = await channel.messages.fetch(embedByGuildId.embeddedMessageId)
-        await message.edit({ embeds: [embed] })
+        await message.edit({ embeds: [embed], components })
         await interaction.reply({ content: 'Stockpile list updated.', ephemeral: true })
       }
     }
@@ -183,6 +184,7 @@ export class EditStockpile {
     if (!embeddedMessageExists) {
       const message = await interaction.reply({
         embeds: [embed],
+        components,
         fetchReply: true,
       })
       await this.stockpileDataService.saveEmbeddedMessageId(
@@ -193,7 +195,9 @@ export class EditStockpile {
     }
   }
 
-  private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+  private async createStockpilesEmbed(
+    guildId: string,
+  ): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] }> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)

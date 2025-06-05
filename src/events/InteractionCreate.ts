@@ -6,10 +6,14 @@ import {
   DeleteStockpileIds,
   SelectFactionIds,
   ResetStockpileTimerIds,
+  Command,
 } from '../models/constants'
+import { AddStockpile } from '../commands/AddStockpile'
 
 @Discord()
 export class InteractionCreate {
+  private addStockpile = new AddStockpile()
+
   @On({ event: 'interactionCreate' })
   async onInteractionCreate([interaction]: ArgsOf<'interactionCreate'>, client: Client) {
     if (interaction.isCommand()) {
@@ -41,8 +45,17 @@ export class InteractionCreate {
         await client.executeInteraction(interaction)
       }
     } else if (interaction.isButton()) {
-      // Handle faction selection buttons
-      if (
+      if (interaction.customId === 'add-stockpile') {
+        try {
+          await this.addStockpile.addStockpile(interaction)
+        } catch (error) {
+          console.error(error)
+          await interaction.reply({
+            content: 'An error occurred while executing the command.',
+            ephemeral: true,
+          })
+        }
+      } else if (
         interaction.customId === SelectFactionIds.WardenButton ||
         interaction.customId === SelectFactionIds.ColonialButton
       ) {

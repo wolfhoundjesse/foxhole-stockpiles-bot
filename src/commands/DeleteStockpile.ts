@@ -135,7 +135,7 @@ export class DeleteStockpile {
         return
       }
 
-      const embed = await this.createStockpilesEmbed(guildId)
+      const { embed, components } = await this.createStockpilesEmbed(guildId)
       const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
       const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
 
@@ -143,7 +143,7 @@ export class DeleteStockpile {
         const channel = interaction.channel
         if (channel) {
           const message = await channel.messages.fetch(embedByGuildId.embeddedMessageId)
-          await message.edit({ embeds: [embed] })
+          await message.edit({ embeds: [embed], components })
         }
       }
 
@@ -175,7 +175,9 @@ export class DeleteStockpile {
     })
   }
 
-  private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+  private async createStockpilesEmbed(
+    guildId: string,
+  ): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] }> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)

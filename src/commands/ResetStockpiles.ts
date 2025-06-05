@@ -1,5 +1,5 @@
 import { Discord, Guard, Slash } from 'discordx'
-import { CommandInteraction, EmbedBuilder } from 'discord.js'
+import { CommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder } from 'discord.js'
 import { StockpileDataService } from '../services/stockpile-data-service'
 import { Command, FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
@@ -33,13 +33,13 @@ export class ResetStockpilesCommand {
       await this.stockpileDataService.resetStockpilesByGuildId(guildId)
 
       // Create and update embed
-      const embed = await this.createStockpilesEmbed(guildId)
+      const { embed, components } = await this.createStockpilesEmbed(guildId)
       const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
       const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
 
       if (embeddedMessageExists && interaction.channel) {
         const message = await interaction.channel.messages.fetch(embedByGuildId.embeddedMessageId)
-        await message.edit({ embeds: [embed] })
+        await message.edit({ embeds: [embed], components })
       }
 
       await interaction.editReply('All stockpiles have been reset for this server.')
@@ -49,7 +49,9 @@ export class ResetStockpilesCommand {
     }
   }
 
-  private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+  private async createStockpilesEmbed(
+    guildId: string,
+  ): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] }> {
     const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
