@@ -10,11 +10,13 @@ import {
 } from '../models/constants'
 import { AddStockpile } from '../commands/AddStockpile'
 import { EditStockpile } from '../commands/EditStockpile'
+import { DeleteStockpile } from '../commands/DeleteStockpile'
 
 @Discord()
 export class InteractionCreate {
   private addStockpile = new AddStockpile()
   private editStockpile = new EditStockpile()
+  private deleteStockpile = new DeleteStockpile()
 
   @On({ event: 'interactionCreate' })
   async onInteractionCreate([interaction]: ArgsOf<'interactionCreate'>, client: Client) {
@@ -60,6 +62,16 @@ export class InteractionCreate {
       } else if (interaction.customId === 'edit-stockpile') {
         try {
           await this.editStockpile.editStockpile(interaction)
+        } catch (error) {
+          console.error(error)
+          await interaction.reply({
+            content: 'An error occurred while executing the command.',
+            ephemeral: true,
+          })
+        }
+      } else if (interaction.customId === 'delete-stockpile') {
+        try {
+          await this.deleteStockpile.deleteStockpile(interaction)
         } catch (error) {
           console.error(error)
           await interaction.reply({

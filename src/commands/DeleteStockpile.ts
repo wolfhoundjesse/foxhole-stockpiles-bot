@@ -24,7 +24,7 @@ export class DeleteStockpile {
   private stockpileToDelete: { [userId: string]: string } = {}
 
   @Slash({ description: 'Delete an existing stockpile', name: Command.DeleteStockpile })
-  async deleteStockpile(interaction: CommandInteraction): Promise<void> {
+  async deleteStockpile(interaction: CommandInteraction | ButtonInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
     const { guildId } = interaction
 

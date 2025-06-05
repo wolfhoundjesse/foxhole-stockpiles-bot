@@ -13,9 +13,15 @@ export const addHelpTip = (
     .setLabel('Edit Stockpile')
     .setStyle(ButtonStyle.Secondary)
 
+  const deleteStockpileButton = new ButtonBuilder()
+    .setCustomId('delete-stockpile')
+    .setLabel('Delete Stockpile')
+    .setStyle(ButtonStyle.Danger)
+
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     addStockpileButton,
     editStockpileButton,
+    deleteStockpileButton,
   )
 
   return {
