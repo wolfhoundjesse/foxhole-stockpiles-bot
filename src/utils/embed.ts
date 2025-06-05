@@ -18,10 +18,16 @@ export const addHelpTip = (
     .setLabel('Delete Stockpile')
     .setStyle(ButtonStyle.Danger)
 
+  const resetTimerButton = new ButtonBuilder()
+    .setCustomId('reset-stockpile-timer')
+    .setLabel('Reset Timer')
+    .setStyle(ButtonStyle.Success)
+
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     addStockpileButton,
     editStockpileButton,
     deleteStockpileButton,
+    resetTimerButton,
   )
 
   return {

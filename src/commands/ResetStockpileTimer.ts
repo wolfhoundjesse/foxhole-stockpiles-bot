@@ -5,6 +5,7 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
   ButtonBuilder,
+  ButtonInteraction,
 } from 'discord.js'
 import { Discord, Guard, Slash, SelectMenuComponent } from 'discordx'
 import { Command, ResetStockpileTimerIds } from '../models/constants'
@@ -23,7 +24,7 @@ export class ResetStockpileTimer {
     description: 'Reset the expiration timer for a stockpile',
     name: Command.ResetStockpileTimer,
   })
-  async resetStockpileTimer(interaction: CommandInteraction): Promise<void> {
+  async resetStockpileTimer(interaction: CommandInteraction | ButtonInteraction): Promise<void> {
     if (!(await checkBotPermissions(interaction))) return
     const { guildId } = interaction
 

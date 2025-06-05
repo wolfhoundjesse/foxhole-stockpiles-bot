@@ -11,12 +11,14 @@ import {
 import { AddStockpile } from '../commands/AddStockpile'
 import { EditStockpile } from '../commands/EditStockpile'
 import { DeleteStockpile } from '../commands/DeleteStockpile'
+import { ResetStockpileTimer } from '../commands/ResetStockpileTimer'
 
 @Discord()
 export class InteractionCreate {
   private addStockpile = new AddStockpile()
   private editStockpile = new EditStockpile()
   private deleteStockpile = new DeleteStockpile()
+  private resetStockpileTimer = new ResetStockpileTimer()
 
   @On({ event: 'interactionCreate' })
   async onInteractionCreate([interaction]: ArgsOf<'interactionCreate'>, client: Client) {
@@ -72,6 +74,16 @@ export class InteractionCreate {
       } else if (interaction.customId === 'delete-stockpile') {
         try {
           await this.deleteStockpile.deleteStockpile(interaction)
+        } catch (error) {
+          console.error(error)
+          await interaction.reply({
+            content: 'An error occurred while executing the command.',
+            ephemeral: true,
+          })
+        }
+      } else if (interaction.customId === 'reset-stockpile-timer') {
+        try {
+          await this.resetStockpileTimer.resetStockpileTimer(interaction)
         } catch (error) {
           console.error(error)
           await interaction.reply({
