@@ -5,6 +5,8 @@ import { Command, FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
 import { PermissionGuard } from '../guards/PermissionGuard'
 import { addHelpTip } from '../utils/embed'
+import { formatStockpileWithExpiration } from '../utils/expiration'
+
 @Discord()
 @Guard(PermissionGuard)
 export class ResetStockpilesCommand {
@@ -48,15 +50,36 @@ export class ResetStockpilesCommand {
   }
 
   private async createStockpilesEmbed(guildId: string): Promise<EmbedBuilder> {
+    const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId)
     const embedTitle = await this.stockpileDataService.getEmbedTitle()
     const faction = await this.stockpileDataService.getFactionByGuildId(guildId)
     const color = FactionColors[faction]
+
+    if (!stockpiles || Object.keys(stockpiles).length === 0) {
+      return addHelpTip(
+        new EmbedBuilder()
+          .setTitle(embedTitle)
+          .setColor(color)
+          .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
+          .setTimestamp(),
+      )
+    }
+
+    const stockpileFields = Object.keys(stockpiles).map((hex) => {
+      return {
+        name: hex,
+        value:
+          stockpiles[hex]
+            .map((stockpile) => formatStockpileWithExpiration(stockpile))
+            .join('\n\n') || 'No stockpiles',
+      }
+    })
 
     return addHelpTip(
       new EmbedBuilder()
         .setTitle(embedTitle)
         .setColor(color)
-        .addFields([{ name: 'No stockpiles', value: 'No stockpiles', inline: true }])
+        .addFields(stockpileFields)
         .setTimestamp(),
     )
   }

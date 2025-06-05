@@ -78,4 +78,14 @@ export const CommandPermissions = {
     defaultMemberPermissions: PermissionFlagsBits.Administrator,
     botPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
   },
+  [Command.ResetStockpileTimer]: {
+    defaultMemberPermissions: null,
+    botPermissions: [
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.EmbedLinks,
+      PermissionFlagsBits.ReadMessageHistory,
+      PermissionFlagsBits.ManageMessages,
+    ],
+  },
 } as const

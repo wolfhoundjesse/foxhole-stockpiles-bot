@@ -15,7 +15,8 @@ CREATE TABLE stockpiles (
   created_at TIMESTAMP NOT NULL,
   updated_by TEXT,
   updated_at TIMESTAMP,
-  channel_id TEXT NOT NULL
+  channel_id TEXT NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '50 hours')
 );
 
 CREATE TABLE locations_manifest (

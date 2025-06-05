@@ -250,73 +250,50 @@ export class StockpileDataService {
   }
 
   public async addStockpile(
-    guildId: string | null,
-    location: string,
+    guildId: string,
+    hex: string,
+    locationName: string,
     code: string,
     stockpileName: string,
+    storageType: string,
     createdBy: string,
     channelId: string,
   ): Promise<boolean> {
-    if (!guildId || !code) {
-      Logger.error('StockpileDataService', 'Failed to add stockpile - missing guildId or code')
+    try {
+      const id = uuidv4()
+      const createdAt = new Date().toISOString()
+
+      // Check for duplicate stockpile
+      const isDuplicate = await this.isDuplicateStockpile(guildId, hex, locationName, stockpileName)
+      if (isDuplicate) {
+        return false
+      }
+
+      await this.dataAccessService.addStockpile(
+        id,
+        guildId,
+        hex,
+        locationName,
+        code,
+        stockpileName,
+        storageType,
+        createdBy,
+        createdAt,
+        channelId,
+      )
+      return true
+    } catch (error) {
+      console.error('Error adding stockpile:', error)
       return false
     }
-
-    const hex = location.split(':')[0]
-    const locationName = location.split(':')[1].split(' - ')[0].trim()
-    const storageType = location.split(':')[1].split(' - ')[1] as StorageType
-
-    Logger.debug('StockpileDataService', `Adding stockpile for guild ${guildId}`, {
-      hex,
-      locationName,
-      stockpileName,
-      storageType,
-    })
-
-    // Check for duplicate stockpile
-    const isDuplicate = await this.isDuplicateStockpile(guildId, hex, locationName, stockpileName)
-    if (isDuplicate) {
-      Logger.error('StockpileDataService', 'Failed to add stockpile - duplicate found')
-      return false
-    }
-
-    const stockpile = {
-      id: uuidv4(),
-      locationName,
-      code,
-      stockpileName,
-      storageType,
-      createdBy,
-      createdAt: new Date().toISOString(),
-      channelId,
-    }
-
-    await this.dataAccessService.addStockpile(
-      stockpile.id,
-      guildId,
-      hex,
-      stockpile.locationName,
-      stockpile.code,
-      stockpile.stockpileName,
-      stockpile.storageType,
-      stockpile.createdBy,
-      stockpile.createdAt,
-      channelId,
-    )
-    Logger.success('StockpileDataService', `Successfully added stockpile ${stockpileName}`)
-    return true
   }
 
   public async getStockpileById(
     guildId: string,
     hex: string,
-    stockpileId: string,
-    channelId: string,
-  ) {
-    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
-    return stockpilesByGuildId[guildId][hex].find(
-      (stockpile) => stockpile.id === stockpileId && stockpile.channelId === channelId,
-    ) as Stockpile
+    id: string,
+  ): Promise<Stockpile | null> {
+    return await this.dataAccessService.getStockpileById(guildId, hex, id)
   }
 
   public async editStockpile(
@@ -338,8 +315,12 @@ export class StockpileDataService {
       stockpileName,
       createdBy,
     })
-    const currentStockpile = await this.getStockpileById(guildId, hex, id, channelId)
+    const currentStockpile = await this.getStockpileById(guildId, hex, id)
     Logger.debug('StockpileDataService', 'Current stockpile', currentStockpile)
+
+    if (!currentStockpile) {
+      return false
+    }
 
     // Check for duplicate stockpile, excluding the current stockpile being edited
     const isDuplicate = await this.isDuplicateStockpile(
@@ -353,21 +334,22 @@ export class StockpileDataService {
       return false // Indicate that a duplicate was found
     }
 
-    const updatedStockpile = {
+    const updatedStockpile: Stockpile & { channelId: string } = {
       ...currentStockpile,
       code,
       stockpileName,
       updatedBy: createdBy,
       updatedAt: new Date().toISOString(),
+      channelId,
     }
 
-    // update the stockpile in the stockpilesByGuildId
-    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
-    stockpilesByGuildId[guildId][hex] = stockpilesByGuildId[guildId][hex].map((stockpile) =>
-      stockpile.id === id ? updatedStockpile : stockpile,
-    )
-    await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
-    return true // Indicate successful edit
+    try {
+      await this.dataAccessService.updateSingleStockpile(updatedStockpile)
+      return true
+    } catch (error) {
+      Logger.error('StockpileDataService', 'Failed to update stockpile', error)
+      return false
+    }
   }
 
   public async deleteStockpile(
@@ -378,37 +360,34 @@ export class StockpileDataService {
       'StockpileDataService',
       `Attempting to delete stockpile ${id} from guild ${guildId}`,
     )
-    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
 
+    // First get the stockpile details before deleting
+    const stockpilesByGuildId = await this.dataAccessService.getStockpilesByGuildId()
     let deletedStockpile: Stockpile | null = null
     let deletedFromHex = ''
 
-    Object.keys(stockpilesByGuildId[guildId]).forEach((hex) => {
-      const filteredStockpiles = stockpilesByGuildId[guildId][hex].filter(
-        (stockpile) => stockpile.id !== id,
-      )
-
-      if (filteredStockpiles.length < stockpilesByGuildId[guildId][hex].length) {
-        deletedStockpile = stockpilesByGuildId[guildId][hex].find((s) => s.id === id) || null
+    // Find the stockpile and its hex before deleting
+    Object.keys(stockpilesByGuildId[guildId] || {}).forEach((hex) => {
+      const stockpile = stockpilesByGuildId[guildId][hex].find((s) => s.id === id)
+      if (stockpile) {
+        deletedStockpile = stockpile
         deletedFromHex = hex
-
-        if (filteredStockpiles.length === 0) {
-          // If the region is now empty, remove it
-          delete stockpilesByGuildId[guildId][hex]
-        } else {
-          stockpilesByGuildId[guildId][hex] = filteredStockpiles
-        }
       }
     })
 
-    await this.dataAccessService.saveStockpilesByGuildId(stockpilesByGuildId)
-
-    if (deletedStockpile) {
-      Logger.success('StockpileDataService', `Successfully deleted stockpile ${id}`)
-    } else {
+    if (!deletedStockpile) {
       Logger.error('StockpileDataService', `Failed to find stockpile ${id} for deletion`)
+      return { deletedStockpile: null, deletedFromHex: '' }
     }
 
+    // Delete the stockpile directly from the database
+    const success = await this.dataAccessService.deleteStockpile(guildId, id)
+    if (!success) {
+      Logger.error('StockpileDataService', `Failed to delete stockpile ${id}`)
+      return { deletedStockpile: null, deletedFromHex: '' }
+    }
+
+    Logger.success('StockpileDataService', `Successfully deleted stockpile ${id}`)
     return { deletedStockpile, deletedFromHex }
   }
 
@@ -480,5 +459,43 @@ export class StockpileDataService {
     } catch (error) {
       Logger.error('StockpileDataService', 'Failed to cleanup messages', error)
     }
+  }
+
+  async resetStockpileTimer(guildId: string, stockpileId: string): Promise<boolean> {
+    try {
+      return await this.dataAccessService.resetStockpileTimer(guildId, stockpileId)
+    } catch (error) {
+      console.error('Error resetting stockpile timer:', error)
+      return false
+    }
+  }
+
+  private isStockpile(value: Stockpile | null): value is Stockpile {
+    return value !== null
+  }
+
+  async updateStockpile(
+    guildId: string,
+    hex: string,
+    id: string,
+    code: string,
+    stockpileName: string,
+    updatedBy: string,
+  ): Promise<void> {
+    const currentStockpile = await this.getStockpileById(guildId, hex, id)
+    if (!currentStockpile) {
+      throw new Error('Stockpile not found')
+    }
+
+    const updatedAt = new Date().toISOString()
+    const updatedStockpile = {
+      ...currentStockpile,
+      code,
+      stockpileName,
+      updatedBy,
+      updatedAt,
+    }
+
+    await this.dataAccessService.updateSingleStockpile(updatedStockpile)
   }
 }

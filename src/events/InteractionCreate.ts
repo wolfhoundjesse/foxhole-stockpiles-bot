@@ -5,6 +5,7 @@ import {
   EditStockpileIds,
   DeleteStockpileIds,
   SelectFactionIds,
+  ResetStockpileTimerIds,
 } from '../models/constants'
 
 @Discord()
@@ -29,6 +30,8 @@ export class InteractionCreate {
       } else if (interaction.customId === EditStockpileIds.StockpileSelect) {
         await client.executeInteraction(interaction)
       } else if (interaction.customId === DeleteStockpileIds.StockpileSelect) {
+        await client.executeInteraction(interaction)
+      } else if (interaction.customId === ResetStockpileTimerIds.StockpileSelect) {
         await client.executeInteraction(interaction)
       }
     } else if (interaction.isModalSubmit()) {

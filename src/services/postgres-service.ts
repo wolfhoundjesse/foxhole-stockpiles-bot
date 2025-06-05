@@ -70,7 +70,8 @@ export class PostgresService {
         COALESCE(json_agg(
           json_build_object(
             'id', s.id,
-            'channelId', s.channel_id,
+            'guildId', s.guild_id,
+            'hex', s.hex,
             'locationName', s.location_name,
             'code', s.code,
             'stockpileName', s.stockpile_name,
@@ -78,7 +79,9 @@ export class PostgresService {
             'createdBy', s.created_by,
             'createdAt', s.created_at,
             'updatedBy', s.updated_by,
-            'updatedAt', s.updated_at
+            'updatedAt', s.updated_at,
+            'expiresAt', s.expires_at,
+            'channelId', s.channel_id
           )
         ) FILTER (WHERE s.id IS NOT NULL), '[]') as stockpiles
       FROM guilds g
@@ -123,7 +126,6 @@ export class PostgresService {
               INSERT INTO stockpiles (
                 id,
                 guild_id,
-                channel_id,
                 hex,
                 location_name,
                 code,
@@ -132,7 +134,8 @@ export class PostgresService {
                 created_by,
                 created_at,
                 updated_by,
-                updated_at
+                updated_at,
+                expires_at
               ) VALUES (
                 COALESCE($1, gen_random_uuid()),
                 $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
@@ -141,7 +144,6 @@ export class PostgresService {
             await client.query(query, [
               stockpile.id,
               guildId,
-              stockpile.channelId,
               hex,
               stockpile.locationName,
               stockpile.code,
@@ -151,6 +153,7 @@ export class PostgresService {
               stockpile.createdAt,
               stockpile.updatedBy,
               stockpile.updatedAt,
+              stockpile.expiresAt,
             ])
           }
         }
@@ -271,12 +274,15 @@ export class PostgresService {
     createdAt: string,
     channelId: string,
   ): Promise<void> {
+    const expiresAt = new Date()
+    expiresAt.setHours(expiresAt.getHours() + 50) // Set expiration to 50 hours from now
+
     await this.pool.query(
       `INSERT INTO stockpiles (
         id, guild_id, hex, location_name, code,
         stockpile_name, storage_type, created_by,
-        created_at, channel_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        created_at, expires_at, channel_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         id,
         guildId,
@@ -287,43 +293,47 @@ export class PostgresService {
         storageType,
         createdBy,
         createdAt,
+        expiresAt.toISOString(),
         channelId,
       ],
     )
   }
 
-  async updateSingleStockpile(stockpile: Stockpile): Promise<void> {
+  async updateSingleStockpile(stockpile: Stockpile & { channelId: string }): Promise<void> {
     await this.pool.query(
       `UPDATE stockpiles 
        SET code = $1,
            stockpile_name = $2,
            updated_by = $3,
-           updated_at = $4
-       WHERE id = $5`,
+           updated_at = $4,
+           expires_at = $5,
+           channel_id = $6
+       WHERE id = $7 AND guild_id = $8 AND hex = $9`,
       [
         stockpile.code,
         stockpile.stockpileName,
         stockpile.updatedBy,
         stockpile.updatedAt,
+        stockpile.expiresAt,
+        stockpile.channelId,
         stockpile.id,
+        stockpile.guildId,
+        stockpile.hex,
       ],
     )
   }
 
-  async getStockpileById(
-    guildId: string,
-    hex: string,
-    id: string,
-    channelId: string,
-  ): Promise<Stockpile | null> {
+  async getStockpileById(guildId: string, hex: string, id: string): Promise<Stockpile | null> {
     const result = await this.pool.query(
       `SELECT * FROM stockpiles 
-       WHERE guild_id = $1 AND hex = $2 AND id = $3 AND channel_id = $4`,
-      [guildId, hex, id, channelId],
+       WHERE guild_id = $1 AND hex = $2 AND id = $3`,
+      [guildId, hex, id],
     )
     return result.rows[0]
       ? {
           id: result.rows[0].id,
+          guildId: result.rows[0].guild_id,
+          hex: result.rows[0].hex,
           locationName: result.rows[0].location_name,
           code: result.rows[0].code,
           stockpileName: result.rows[0].stockpile_name,
@@ -332,6 +342,7 @@ export class PostgresService {
           createdAt: result.rows[0].created_at,
           updatedBy: result.rows[0].updated_by,
           updatedAt: result.rows[0].updated_at,
+          expiresAt: result.rows[0].expires_at,
           channelId: result.rows[0].channel_id,
         }
       : null
@@ -381,5 +392,33 @@ export class PostgresService {
       Logger.error('PostgresService', 'Failed to deregister war message channel', error)
       throw error
     }
+  }
+
+  async resetStockpileTimer(guildId: string, stockpileId: string): Promise<boolean> {
+    const expiresAt = new Date()
+    expiresAt.setHours(expiresAt.getHours() + 50) // Set expiration to 50 hours from now
+
+    const result = await this.pool.query(
+      `UPDATE stockpiles 
+       SET expires_at = $1, 
+           updated_at = NOW(), 
+           updated_by = $2
+       WHERE id = $3 AND guild_id = $4
+       RETURNING id`,
+      [expiresAt.toISOString(), 'system', stockpileId, guildId],
+    )
+
+    return (result.rowCount ?? 0) > 0
+  }
+
+  async deleteStockpile(guildId: string, stockpileId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `DELETE FROM stockpiles 
+       WHERE id = $1 AND guild_id = $2
+       RETURNING id`,
+      [stockpileId, guildId],
+    )
+
+    return (result.rowCount ?? 0) > 0
   }
 }

@@ -17,6 +17,7 @@ import { Faction, FactionColors, type FactionType } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
 import { PermissionGuard } from '../guards/PermissionGuard'
 import { addHelpTip } from '../utils/embed'
+import { formatStockpileWithExpiration } from '../utils/expiration'
 
 @Discord()
 @Guard(PermissionGuard)
@@ -248,12 +249,18 @@ export class AddStockpile {
       return
     }
 
+    // Parse the selectedStorageLocation string
+    const [hex, locationAndType] = selectedStorageLocation.split(': ')
+    const [locationName, storageType] = locationAndType.split(' - ')
+
     // Add the stockpile to the database
     const success = await this.stockpileDataService.addStockpile(
       guildId,
-      selectedStorageLocation,
+      hex,
+      locationName,
       stockpileCode,
       stockpileName,
+      storageType,
       interaction.user.id,
       interaction.channelId,
     )
@@ -273,23 +280,40 @@ export class AddStockpile {
     const embed = await this.createStockpilesEmbed(guildId)
     const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId)
     const embeddedMessageExists = Boolean(embedByGuildId.embeddedMessageId)
+
     if (embeddedMessageExists) {
       const channel = interaction.channel
       if (channel) {
-        const message = await channel.messages.fetch(embedByGuildId.embeddedMessageId)
-        await message.edit({ embeds: [embed] })
-        await interaction.reply({ content: 'Stockpile list updated.', ephemeral: true })
+        try {
+          const message = await channel.messages.fetch(embedByGuildId.embeddedMessageId)
+          await message.edit({ embeds: [embed] })
+          await interaction.reply({ content: 'Stockpile list updated.', ephemeral: true })
+        } catch (error) {
+          // If we can't access the message, delete the old message ID and create a new one
+          console.warn('Could not access existing message, creating new one:', error)
+          // Delete the old message ID from the database
+          await this.stockpileDataService.saveEmbeddedMessageId(guildId, '', '')
+          // Create new message
+          const message = await interaction.reply({
+            embeds: [embed],
+            fetchReply: true,
+          })
+          // Save the new message ID
+          await this.stockpileDataService.saveEmbeddedMessageId(
+            guildId,
+            interaction.channelId,
+            message.id,
+          )
+        }
       }
-    }
-
-    if (!embeddedMessageExists) {
+    } else {
       const message = await interaction.reply({
         embeds: [embed],
         fetchReply: true,
       })
       await this.stockpileDataService.saveEmbeddedMessageId(
         guildId,
-        interaction.channelId || '',
+        interaction.channelId,
         message.id,
       )
     }
@@ -339,11 +363,8 @@ export class AddStockpile {
         name: hex,
         value:
           stockpiles[hex]
-            .map(
-              (stockpile) =>
-                `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}`,
-            )
-            .join('\n') || 'No stockpiles',
+            .map((stockpile) => formatStockpileWithExpiration(stockpile))
+            .join('\n\n') || 'No stockpiles',
       }
     })
 

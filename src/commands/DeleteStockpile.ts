@@ -15,6 +15,7 @@ import { FactionColors } from '../models'
 import { checkBotPermissions } from '../utils/permissions'
 import { PermissionGuard } from '../guards/PermissionGuard'
 import { addHelpTip } from '../utils/embed'
+import { formatStockpileWithExpiration } from '../utils/expiration'
 
 @Discord()
 @Guard(PermissionGuard)
@@ -195,11 +196,8 @@ export class DeleteStockpile {
         name: hex,
         value:
           stockpiles[hex]
-            .map(
-              (stockpile) =>
-                `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}`,
-            )
-            .join('\n') || 'No stockpiles',
+            .map((stockpile) => formatStockpileWithExpiration(stockpile))
+            .join('\n\n') || 'No stockpiles',
       }
     })
 

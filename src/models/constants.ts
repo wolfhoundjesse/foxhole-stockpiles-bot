@@ -12,6 +12,7 @@ export const RawCommand = {
   SetWarArchive: 'set-war-archive',
   ArchiveChannel: 'archive-channel',
   DeregisterWarChannel: 'deregister-war-channel',
+  ResetStockpileTimer: 'reset-stockpile-timer',
 } as const
 
 export type CommandType = {
@@ -50,3 +51,7 @@ export const DeleteStockpileIds = {
 export const WarArchiveIds = {
   WarNumberInput: 'war-number-input',
 } as const
+
+export enum ResetStockpileTimerIds {
+  StockpileSelect = 'reset-stockpile-timer-select',
+}
