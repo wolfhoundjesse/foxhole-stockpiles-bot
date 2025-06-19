@@ -81,22 +81,26 @@ export class AddStockpile {
     userId: string,
   ): StringSelectMenuBuilder {
     const totalPages = Math.ceil(hexes.length / this.ITEMS_PER_PAGE)
-    const startIdx = currentPage * this.ITEMS_PER_PAGE
+
+    // Ensure currentPage is within valid bounds
+    const safeCurrentPage = Math.max(0, Math.min(currentPage, totalPages - 1))
+
+    const startIdx = safeCurrentPage * this.ITEMS_PER_PAGE
     const pageHexes = hexes.slice(startIdx, startIdx + this.ITEMS_PER_PAGE)
 
     const menu = new StringSelectMenuBuilder()
       .setCustomId(AddStockpileIds.HexMenu)
-      .setPlaceholder(`Region/Hex (Page ${currentPage + 1}/${totalPages})`)
+      .setPlaceholder(`Region/Hex (Page ${safeCurrentPage + 1}/${totalPages})`)
 
     if (totalPages > 1) {
-      if (currentPage > 0) {
+      if (safeCurrentPage > 0) {
         menu.addOptions(
           new StringSelectMenuOptionBuilder()
             .setLabel('⬅️ Previous Page')
             .setValue(`prev_page_${userId}`),
         )
       }
-      if (currentPage < totalPages - 1) {
+      if (safeCurrentPage < totalPages - 1) {
         menu.addOptions(
           new StringSelectMenuOptionBuilder()
             .setLabel('➡️ Next Page')
@@ -121,12 +125,27 @@ export class AddStockpile {
       const faction = await this.getFaction(interaction)
       if (faction === Faction.None) return
 
-      this.hexPages[interaction.user.id] = selectedValue.startsWith('prev_page_')
-        ? this.hexPages[interaction.user.id] - 1
-        : this.hexPages[interaction.user.id] + 1
+      // Ensure the user's page state is initialized
+      if (!this.hexPages[interaction.user.id]) {
+        this.hexPages[interaction.user.id] = 0
+      }
 
       const storageLocationsByRegion =
         await this.stockpileDataService.getStorageLocationsByRegion(faction)
+      const totalPages = Math.ceil(
+        Object.keys(storageLocationsByRegion).length / this.ITEMS_PER_PAGE,
+      )
+
+      // Update the page number
+      if (selectedValue.startsWith('prev_page_')) {
+        this.hexPages[interaction.user.id] = Math.max(0, this.hexPages[interaction.user.id] - 1)
+      } else {
+        this.hexPages[interaction.user.id] = Math.min(
+          totalPages - 1,
+          this.hexPages[interaction.user.id] + 1,
+        )
+      }
+
       const hexSelectMenu = this.createHexSelectMenu(
         Object.keys(storageLocationsByRegion),
         this.hexPages[interaction.user.id],
