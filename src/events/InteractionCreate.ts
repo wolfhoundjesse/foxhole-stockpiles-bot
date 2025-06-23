@@ -44,6 +44,11 @@ export class InteractionCreate {
         await client.executeInteraction(interaction);
       } else if (interaction.customId === ResetStockpileTimerIds.StockpileSelect) {
         await client.executeInteraction(interaction);
+      } else if (
+        interaction.customId === 'region_select' ||
+        interaction.customId === 'timezone_select'
+      ) {
+        await client.executeInteraction(interaction);
       }
     } else if (interaction.isModalSubmit()) {
       if (interaction.customId === AddStockpileIds.StockpileDetails) {

@@ -87,5 +87,21 @@ export const CommandPermissions = {
       PermissionFlagsBits.ReadMessageHistory,
       PermissionFlagsBits.ManageMessages
     ]
+  },
+  [Command.RegisterTimezone]: {
+    defaultMemberPermissions: null,
+    botPermissions: [
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.EmbedLinks
+    ]
+  },
+  [Command.ListTimezones]: {
+    defaultMemberPermissions: null,
+    botPermissions: [
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.EmbedLinks
+    ]
   }
 } as const;

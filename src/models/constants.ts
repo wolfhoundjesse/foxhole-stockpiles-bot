@@ -13,13 +13,15 @@ export const RawCommand = {
   ArchiveChannel: 'archive-channel',
   DeregisterWarChannel: 'deregister-war-channel',
   ResetStockpileTimer: 'reset-stockpile-timer',
-} as const
+  RegisterTimezone: 'register-timezone',
+  ListTimezones: 'list-timezones'
+} as const;
 
 export type CommandType = {
-  [Key in keyof typeof RawCommand]: Lowercase<(typeof RawCommand)[Key]>
-}
+  [Key in keyof typeof RawCommand]: Lowercase<(typeof RawCommand)[Key]>;
+};
 
-export const Command: CommandType = RawCommand as CommandType
+export const Command: CommandType = RawCommand as CommandType;
 
 export const AddStockpileIds = {
   HexMenu: 'add/hex-menu',
@@ -27,31 +29,31 @@ export const AddStockpileIds = {
   StockpileDetails: 'add/stockpile-details',
   StockpileCodeInput: 'add/stockpile-code-input',
   StockpileNameInput: 'add/stockpile-name-input',
-  DismissButton: 'add/dismiss-button',
-} as const
+  DismissButton: 'add/dismiss-button'
+} as const;
 
 export const SelectFactionIds = {
   WardenButton: 'faction_warden',
-  ColonialButton: 'faction_colonial',
-} as const
+  ColonialButton: 'faction_colonial'
+} as const;
 
 export const EditStockpileIds = {
   StockpileSelect: 'edit/stockpile-select',
   StockpileEditModal: 'edit/stockpile-edit-modal',
   StockpileCodeInput: 'edit/stockpile-code-input',
-  StockpileNameInput: 'edit/stockpile-name-input',
-} as const
+  StockpileNameInput: 'edit/stockpile-name-input'
+} as const;
 
 export const DeleteStockpileIds = {
   StockpileSelect: 'delete/stockpile-select',
   ConfirmButton: 'delete/confirm-button',
-  CancelButton: 'delete/cancel-button',
-} as const
+  CancelButton: 'delete/cancel-button'
+} as const;
 
 export const WarArchiveIds = {
-  WarNumberInput: 'war-number-input',
-} as const
+  WarNumberInput: 'war-number-input'
+} as const;
 
 export enum ResetStockpileTimerIds {
-  StockpileSelect = 'reset-stockpile-timer-select',
+  StockpileSelect = 'reset-stockpile-timer-select'
 }

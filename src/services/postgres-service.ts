@@ -1,15 +1,15 @@
-import { Pool } from 'pg'
+import { Pool } from 'pg';
 import type {
   LocationsManifest,
   StockpilesByGuildId,
   FactionsByGuildId,
   EmbedsByGuildId,
-  Stockpile,
-} from '../models'
-import { Logger } from '../utils/logger'
+  Stockpile
+} from '../models';
+import { Logger } from '../utils/logger';
 
 export class PostgresService {
-  private pool: Pool
+  private pool: Pool;
 
   constructor() {
     this.pool = new Pool({
@@ -18,8 +18,8 @@ export class PostgresService {
       host: process.env.POSTGRES_HOST,
       database: process.env.POSTGRES_DATABASE,
       password: process.env.POSTGRES_PASSWORD,
-      port: parseInt(process.env.POSTGRES_PORT || '5432'),
-    })
+      port: parseInt(process.env.POSTGRES_PORT || '5432')
+    });
   }
 
   // Locations Manifest
@@ -34,17 +34,17 @@ export class PostgresService {
       FROM locations_manifest
       ORDER BY updated_at DESC
       LIMIT 1
-    `)
+    `);
 
-    if (!result.rows[0]) return null
+    if (!result.rows[0]) return null;
 
     return {
       warNumber: result.rows[0].war_number,
       isResistancePhase: result.rows[0].is_resistance_phase,
       COLONIALS: result.rows[0].COLONIALS,
       WARDENS: result.rows[0].WARDENS,
-      updatedAt: result.rows[0].updated_at.toISOString(),
-    }
+      updatedAt: result.rows[0].updated_at.toISOString()
+    };
   }
 
   async saveLocationsManifest(manifest: LocationsManifest): Promise<void> {
@@ -57,8 +57,8 @@ export class PostgresService {
         warden_locations
       ) VALUES ($1, $2, $3, $4)
       `,
-      [manifest.warNumber, manifest.isResistancePhase, manifest.COLONIALS, manifest.WARDENS],
-    )
+      [manifest.warNumber, manifest.isResistancePhase, manifest.COLONIALS, manifest.WARDENS]
+    );
   }
 
   // Stockpiles
@@ -87,27 +87,27 @@ export class PostgresService {
       FROM guilds g
       LEFT JOIN stockpiles s ON s.guild_id = g.guild_id
       GROUP BY g.guild_id, s.hex
-    `
-    const result = await this.pool.query(query)
+    `;
+    const result = await this.pool.query(query);
 
     return result.rows.reduce((acc, row) => {
       if (!acc[row.guild_id]) {
-        acc[row.guild_id] = {}
+        acc[row.guild_id] = {};
       }
       if (row.hex && row.stockpiles.length > 0) {
-        acc[row.guild_id][row.hex] = row.stockpiles
+        acc[row.guild_id][row.hex] = row.stockpiles;
       }
-      return acc
-    }, {} as StockpilesByGuildId)
+      return acc;
+    }, {} as StockpilesByGuildId);
   }
 
   async saveStockpilesByGuildId(data: StockpilesByGuildId): Promise<void> {
-    const client = await this.pool.connect()
+    const client = await this.pool.connect();
     try {
-      await client.query('BEGIN')
+      await client.query('BEGIN');
 
       // Delete existing stockpiles
-      await client.query('DELETE FROM stockpiles')
+      await client.query('DELETE FROM stockpiles');
 
       for (const [guildId, regions] of Object.entries(data)) {
         // Ensure guild exists
@@ -117,8 +117,8 @@ export class PostgresService {
           VALUES ($1, 'NONE')  -- Default faction, can be updated later
           ON CONFLICT (guild_id) DO NOTHING
         `,
-          [guildId],
-        )
+          [guildId]
+        );
 
         for (const [hex, stockpiles] of Object.entries(regions)) {
           for (const stockpile of stockpiles) {
@@ -140,7 +140,7 @@ export class PostgresService {
                 COALESCE($1, gen_random_uuid()),
                 $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
               )
-            `
+            `;
             await client.query(query, [
               stockpile.id,
               guildId,
@@ -153,18 +153,18 @@ export class PostgresService {
               stockpile.createdAt,
               stockpile.updatedBy,
               stockpile.updatedAt,
-              stockpile.expiresAt,
-            ])
+              stockpile.expiresAt
+            ]);
           }
         }
       }
 
-      await client.query('COMMIT')
+      await client.query('COMMIT');
     } catch (e) {
-      await client.query('ROLLBACK')
-      throw e
+      await client.query('ROLLBACK');
+      throw e;
     } finally {
-      client.release()
+      client.release();
     }
   }
 
@@ -173,21 +173,21 @@ export class PostgresService {
     const query = `
       SELECT guild_id, faction
       FROM guilds
-    `
-    const result = await this.pool.query(query)
+    `;
+    const result = await this.pool.query(query);
 
     // Transform rows into the expected dictionary structure
     return result.rows.reduce((acc, row) => {
-      acc[row.guild_id] = row.faction
-      return acc
-    }, {} as FactionsByGuildId)
+      acc[row.guild_id] = row.faction;
+      return acc;
+    }, {} as FactionsByGuildId);
   }
 
   async saveFactionsByGuildId(data: FactionsByGuildId): Promise<void> {
     // Begin transaction
-    const client = await this.pool.connect()
+    const client = await this.pool.connect();
     try {
-      await client.query('BEGIN')
+      await client.query('BEGIN');
 
       // Instead of DELETE FROM guilds, use ON CONFLICT for each row
       for (const [guildId, faction] of Object.entries(data)) {
@@ -196,16 +196,16 @@ export class PostgresService {
           VALUES ($1, $2)
           ON CONFLICT (guild_id) DO UPDATE
           SET faction = EXCLUDED.faction
-        `
-        await client.query(query, [guildId, faction])
+        `;
+        await client.query(query, [guildId, faction]);
       }
 
-      await client.query('COMMIT')
+      await client.query('COMMIT');
     } catch (e) {
-      await client.query('ROLLBACK')
-      throw e
+      await client.query('ROLLBACK');
+      throw e;
     } finally {
-      client.release()
+      client.release();
     }
   }
 
@@ -214,23 +214,23 @@ export class PostgresService {
     const query = `
       SELECT guild_id, channel_id, message_id
       FROM embedded_messages
-    `
-    const result = await this.pool.query(query)
+    `;
+    const result = await this.pool.query(query);
 
     // Transform rows into the expected structure
     return result.rows.reduce((acc, row) => {
       acc[row.guild_id] = {
         channelId: row.channel_id,
-        embeddedMessageId: row.message_id,
-      }
-      return acc
-    }, {} as EmbedsByGuildId)
+        embeddedMessageId: row.message_id
+      };
+      return acc;
+    }, {} as EmbedsByGuildId);
   }
 
   async saveEmbedsByGuildId(data: EmbedsByGuildId): Promise<void> {
-    const client = await this.pool.connect()
+    const client = await this.pool.connect();
     try {
-      await client.query('BEGIN')
+      await client.query('BEGIN');
 
       for (const [guildId, embed] of Object.entries(data)) {
         const query = `
@@ -240,16 +240,16 @@ export class PostgresService {
           SET 
             channel_id = EXCLUDED.channel_id,
             message_id = EXCLUDED.message_id
-        `
-        await client.query(query, [guildId, embed.channelId, embed.embeddedMessageId])
+        `;
+        await client.query(query, [guildId, embed.channelId, embed.embeddedMessageId]);
       }
 
-      await client.query('COMMIT')
+      await client.query('COMMIT');
     } catch (e) {
-      await client.query('ROLLBACK')
-      throw e
+      await client.query('ROLLBACK');
+      throw e;
     } finally {
-      client.release()
+      client.release();
     }
   }
 
@@ -257,8 +257,8 @@ export class PostgresService {
     const query = `
       DELETE FROM stockpiles
       WHERE guild_id = $1
-    `
-    await this.pool.query(query, [guildId])
+    `;
+    await this.pool.query(query, [guildId]);
   }
 
   // Add these methods for more efficient single-stockpile operations
@@ -272,10 +272,10 @@ export class PostgresService {
     storageType: string,
     createdBy: string,
     createdAt: string,
-    channelId: string,
+    channelId: string
   ): Promise<void> {
-    const expiresAt = new Date()
-    expiresAt.setHours(expiresAt.getHours() + 50) // Set expiration to 50 hours from now
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 50); // Set expiration to 50 hours from now
 
     await this.pool.query(
       `INSERT INTO stockpiles (
@@ -294,9 +294,9 @@ export class PostgresService {
         createdBy,
         createdAt,
         expiresAt.toISOString(),
-        channelId,
-      ],
-    )
+        channelId
+      ]
+    );
   }
 
   async updateSingleStockpile(stockpile: Stockpile & { channelId: string }): Promise<void> {
@@ -318,17 +318,17 @@ export class PostgresService {
         stockpile.channelId,
         stockpile.id,
         stockpile.guildId,
-        stockpile.hex,
-      ],
-    )
+        stockpile.hex
+      ]
+    );
   }
 
   async getStockpileById(guildId: string, hex: string, id: string): Promise<Stockpile | null> {
     const result = await this.pool.query(
       `SELECT * FROM stockpiles 
        WHERE guild_id = $1 AND hex = $2 AND id = $3`,
-      [guildId, hex, id],
-    )
+      [guildId, hex, id]
+    );
     return result.rows[0]
       ? {
           id: result.rows[0].id,
@@ -343,9 +343,9 @@ export class PostgresService {
           updatedBy: result.rows[0].updated_by,
           updatedAt: result.rows[0].updated_at,
           expiresAt: result.rows[0].expires_at,
-          channelId: result.rows[0].channel_id,
+          channelId: result.rows[0].channel_id
         }
-      : null
+      : null;
   }
 
   async registerWarMessageChannel(guildId: string, channelId: string): Promise<void> {
@@ -353,16 +353,16 @@ export class PostgresService {
       `INSERT INTO war_message_channels (guild_id, channel_id)
        VALUES ($1, $2)
        ON CONFLICT (guild_id, channel_id) DO NOTHING`,
-      [guildId, channelId],
-    )
+      [guildId, channelId]
+    );
   }
 
   async getWarMessageChannels(guildId: string): Promise<string[]> {
     const result = await this.pool.query(
       'SELECT channel_id FROM war_message_channels WHERE guild_id = $1',
-      [guildId],
-    )
-    return result.rows.map((row) => row.channel_id)
+      [guildId]
+    );
+    return result.rows.map(row => row.channel_id);
   }
 
   async setWarArchiveChannel(guildId: string, channelId: string): Promise<void> {
@@ -370,33 +370,33 @@ export class PostgresService {
       `INSERT INTO war_archive_channels (guild_id, channel_id)
      VALUES ($1, $2)
      ON CONFLICT (guild_id) DO UPDATE SET channel_id = $2`,
-      [guildId, channelId],
-    )
+      [guildId, channelId]
+    );
   }
 
   async getWarArchiveChannel(guildId: string): Promise<string | null> {
     const result = await this.pool.query(
       'SELECT channel_id FROM war_archive_channels WHERE guild_id = $1',
-      [guildId],
-    )
-    return result.rows[0]?.channel_id || null
+      [guildId]
+    );
+    return result.rows[0]?.channel_id || null;
   }
 
   async deregisterWarMessageChannel(guildId: string, channelId: string): Promise<void> {
     try {
       await this.pool.query(
         'DELETE FROM war_message_channels WHERE guild_id = $1 AND channel_id = $2',
-        [guildId, channelId],
-      )
+        [guildId, channelId]
+      );
     } catch (error) {
-      Logger.error('PostgresService', 'Failed to deregister war message channel', error)
-      throw error
+      Logger.error('PostgresService', 'Failed to deregister war message channel', error);
+      throw error;
     }
   }
 
   async resetStockpileTimer(guildId: string, stockpileId: string): Promise<boolean> {
-    const expiresAt = new Date()
-    expiresAt.setHours(expiresAt.getHours() + 50) // Set expiration to 50 hours from now
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 50); // Set expiration to 50 hours from now
 
     const result = await this.pool.query(
       `UPDATE stockpiles 
@@ -405,20 +405,88 @@ export class PostgresService {
            updated_by = $2
        WHERE id = $3 AND guild_id = $4
        RETURNING id`,
-      [expiresAt.toISOString(), 'system', stockpileId, guildId],
-    )
+      [expiresAt.toISOString(), 'system', stockpileId, guildId]
+    );
 
-    return (result.rowCount ?? 0) > 0
+    return (result.rowCount ?? 0) > 0;
   }
 
   async deleteStockpile(guildId: string, stockpileId: string): Promise<boolean> {
-    const result = await this.pool.query(
-      `DELETE FROM stockpiles 
-       WHERE id = $1 AND guild_id = $2
-       RETURNING id`,
-      [stockpileId, guildId],
-    )
+    const query = `
+      DELETE FROM stockpiles 
+      WHERE guild_id = $1 AND id = $2
+    `;
+    const result = await this.pool.query(query, [guildId, stockpileId]);
+    return (result.rowCount ?? 0) > 0;
+  }
 
-    return (result.rowCount ?? 0) > 0
+  // User Timezones
+  async saveUserTimezone(userId: string, timezone: string, displayName?: string): Promise<void> {
+    const query = `
+      INSERT INTO user_timezones (user_id, timezone, display_name)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id) DO UPDATE
+      SET timezone = EXCLUDED.timezone,
+          display_name = EXCLUDED.display_name,
+          updated_at = CURRENT_TIMESTAMP
+    `;
+    await this.pool.query(query, [userId, timezone, displayName || null]);
+  }
+
+  async getUserTimezone(
+    userId: string
+  ): Promise<{ timezone: string; displayName?: string } | null> {
+    const query = `
+      SELECT timezone, display_name
+      FROM user_timezones
+      WHERE user_id = $1
+    `;
+    const result = await this.pool.query(query, [userId]);
+
+    if (result.rows.length === 0) return null;
+
+    return {
+      timezone: result.rows[0].timezone,
+      displayName: result.rows[0].display_name
+    };
+  }
+
+  async getUsersByTimezone(timezone: string): Promise<{ userId: string; displayName?: string }[]> {
+    const query = `
+      SELECT user_id, display_name
+      FROM user_timezones
+      WHERE timezone = $1
+      ORDER BY display_name, user_id
+    `;
+    const result = await this.pool.query(query, [timezone]);
+
+    return result.rows.map(row => ({
+      userId: row.user_id,
+      displayName: row.display_name
+    }));
+  }
+
+  async getAllTimezones(): Promise<{ timezone: string; userCount: number }[]> {
+    const query = `
+      SELECT timezone, COUNT(*) as user_count
+      FROM user_timezones
+      GROUP BY timezone
+      ORDER BY user_count DESC, timezone
+    `;
+    const result = await this.pool.query(query);
+
+    return result.rows.map(row => ({
+      timezone: row.timezone,
+      userCount: parseInt(row.user_count)
+    }));
+  }
+
+  async deleteUserTimezone(userId: string): Promise<boolean> {
+    const query = `
+      DELETE FROM user_timezones
+      WHERE user_id = $1
+    `;
+    const result = await this.pool.query(query, [userId]);
+    return (result.rowCount ?? 0) > 0;
   }
 }
