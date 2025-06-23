@@ -1,9 +1,9 @@
 import { Discord, Guard, Slash } from 'discordx';
 import { CommandInteraction, MessageFlags } from 'discord.js';
-import { StockpileDataService } from '../services/stockpile-data-service.js';
-import { checkBotPermissions } from '../utils/permissions.js';
-import { Command } from '../models';
-import { PermissionGuard } from '../guards/PermissionGuard';
+import { StockpileDataService } from '../../services/stockpile-data-service.js';
+import { checkBotPermissions } from '../../utils/permissions.js';
+import { Command } from '../../models';
+import { PermissionGuard } from '../../guards/PermissionGuard';
 
 @Discord()
 @Guard(PermissionGuard)

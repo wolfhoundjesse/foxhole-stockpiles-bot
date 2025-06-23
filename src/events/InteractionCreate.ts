@@ -8,10 +8,10 @@ import {
   ResetStockpileTimerIds,
   Command
 } from '../models/constants';
-import { AddStockpile } from '../commands/AddStockpile';
-import { EditStockpile } from '../commands/EditStockpile';
-import { DeleteStockpile } from '../commands/DeleteStockpile';
-import { ResetStockpileTimer } from '../commands/ResetStockpileTimer';
+import { AddStockpile } from '../commands/stockpile/AddStockpile';
+import { EditStockpile } from '../commands/stockpile/EditStockpile';
+import { DeleteStockpile } from '../commands/stockpile/DeleteStockpile';
+import { ResetStockpileTimer } from '../commands/stockpile/ResetStockpileTimer';
 import { MessageFlags } from 'discord.js';
 
 @Discord()

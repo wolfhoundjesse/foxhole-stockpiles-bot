@@ -6,13 +6,13 @@ import {
   ApplicationCommandOptionType,
   PermissionsBitField
 } from 'discord.js';
-import { Command } from '../models/constants';
-import { checkBotPermissions } from '../utils/permissions';
-import { PostgresService } from '../services/postgres-service';
-import { Logger } from '../utils/logger';
-import { CommandPermissions } from '../models/permissions';
-import { PermissionGuard } from '../guards/PermissionGuard';
-import { getPermissionString } from '../utils/types';
+import { Command } from '../../models/constants';
+import { checkBotPermissions } from '../../utils/permissions';
+import { PostgresService } from '../../services/postgres-service';
+import { Logger } from '../../utils/logger';
+import { CommandPermissions } from '../../models/permissions';
+import { PermissionGuard } from '../../guards/PermissionGuard';
+import { getPermissionString } from '../../utils/types';
 
 @Discord()
 @Guard(PermissionGuard)
