@@ -5,47 +5,48 @@ import {
   StringSelectMenuInteraction,
   ModalSubmitInteraction,
   ButtonInteraction,
-} from 'discord.js'
+  MessageFlags
+} from 'discord.js';
 
 export async function checkBotPermissions(
   interaction:
     | CommandInteraction
     | StringSelectMenuInteraction
     | ModalSubmitInteraction
-    | ButtonInteraction,
+    | ButtonInteraction
 ): Promise<boolean> {
   if (!interaction.guild) {
     await interaction.reply({
       content: 'This command can only be used in a server.',
-      ephemeral: true,
-    })
-    return false
+      flags: MessageFlags.Ephemeral
+    });
+    return false;
   }
 
-  const botMember = interaction.guild.members.cache.get(interaction.client.user.id)
-  if (!botMember) return false
+  const botMember = interaction.guild.members.cache.get(interaction.client.user.id);
+  if (!botMember) return false;
 
   const requiredPermissions = new PermissionsBitField([
     'ViewChannel',
     'SendMessages',
     'EmbedLinks',
     'ReadMessageHistory',
-    'ManageMessages',
-  ])
+    'ManageMessages'
+  ]);
 
-  const hasPermissions = botMember.permissions.has(requiredPermissions)
+  const hasPermissions = botMember.permissions.has(requiredPermissions);
 
   if (!hasPermissions) {
     const missingPermissions = requiredPermissions
       .toArray()
-      .filter((perm) => !botMember.permissions.has(perm))
+      .filter(perm => !botMember.permissions.has(perm));
 
     await interaction.reply({
       content: `I need the following permissions: ${missingPermissions.join(', ')}`,
-      ephemeral: true,
-    })
-    return false
+      flags: MessageFlags.Ephemeral
+    });
+    return false;
   }
 
-  return true
+  return true;
 }
