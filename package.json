@@ -4,12 +4,24 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/main.ts",
-    "dev": "bun --watch src/main.ts"
+    "dev": "bun --watch src/main.ts",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@eslint/js": "^9.29.0",
     "@types/bun": "latest",
     "@types/pg": "^8.11.10",
-    "@types/uuid": "^10.0.0"
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.34.1",
+    "@typescript-eslint/parser": "^8.34.1",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -23,7 +35,7 @@
     "dotenv": "^16.4.5",
     "lowdb": "^7.0.1",
     "pg": "^8.13.1",
-    "prettier": "^3.3.3",
+    "prettier": "^3.6.0",
     "uuid": "^10.0.0"
   }
 }
