@@ -1,6 +1,7 @@
 import { Discord, Guard, Slash } from 'discordx';
 import { CommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder } from 'discord.js';
 import { StockpileDataService } from '../../services/stockpile-data-service';
+import { EmbedUpdateService } from '../../services/embed-update-service';
 import { Command, FactionColors } from '../../models';
 import { checkBotPermissions } from '../../utils/permissions';
 import { PermissionGuard } from '../../guards/PermissionGuard';
@@ -31,6 +32,10 @@ export class ResetStockpilesCommand {
 
       // Reset stockpiles for this guild
       await this.stockpileDataService.resetStockpilesByGuildId(guildId);
+
+      // Stop the embed update timer (all stockpiles deleted)
+      const embedUpdateService = EmbedUpdateService.getInstance();
+      embedUpdateService.stopTimer(guildId);
 
       // Create and update embed
       const { embed, components } = await this.createStockpilesEmbed(guildId);

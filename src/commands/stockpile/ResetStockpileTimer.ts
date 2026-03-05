@@ -11,6 +11,7 @@ import {
 import { Discord, Guard, Slash, SelectMenuComponent } from 'discordx';
 import { Command, ResetStockpileTimerIds } from '../../models/constants';
 import { StockpileDataService } from '../../services/stockpile-data-service';
+import { EmbedUpdateService } from '../../services/embed-update-service';
 import { FactionColors } from '../../models';
 import { checkBotPermissions } from '../../utils/permissions';
 import { PermissionGuard } from '../../guards/PermissionGuard';
@@ -98,6 +99,10 @@ export class ResetStockpileTimer {
 
       // Reset the timer for this stockpile
       await this.stockpileDataService.resetStockpileTimer(guildId, stockpileId);
+
+      // Restart the embed update timer for this guild
+      const embedUpdateService = EmbedUpdateService.getInstance();
+      await embedUpdateService.restartTimer(guildId);
 
       // Update the interaction to remove the select menu
       await interaction.update({

@@ -12,6 +12,7 @@ import {
 import { Discord, Guard, Slash, SelectMenuComponent, ButtonComponent } from 'discordx';
 import { Command, DeleteStockpileIds } from '../../models/constants';
 import { StockpileDataService } from '../../services/stockpile-data-service';
+import { EmbedUpdateService } from '../../services/embed-update-service';
 import { FactionColors } from '../../models';
 import { checkBotPermissions } from '../../utils/permissions';
 import { PermissionGuard } from '../../guards/PermissionGuard';
@@ -136,6 +137,18 @@ export class DeleteStockpile {
           components: []
         });
         return;
+      }
+
+      // Check if there are any stockpiles left
+      const remainingStockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId);
+      const embedUpdateService = EmbedUpdateService.getInstance();
+
+      if (!remainingStockpiles || Object.keys(remainingStockpiles).length === 0) {
+        // No stockpiles left, stop the timer
+        embedUpdateService.stopTimer(guildId);
+      } else {
+        // Restart the timer
+        await embedUpdateService.restartTimer(guildId);
       }
 
       const { embed, components } = await this.createStockpilesEmbed(guildId);

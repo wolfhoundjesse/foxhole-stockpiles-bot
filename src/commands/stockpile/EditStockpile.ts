@@ -16,6 +16,7 @@ import {
 import { Discord, Guard, Slash, SlashOption, SelectMenuComponent, ModalComponent } from 'discordx';
 import { Command, EditStockpileIds } from '../../models/constants';
 import { StockpileDataService } from '../../services/stockpile-data-service';
+import { EmbedUpdateService } from '../../services/embed-update-service';
 import { FactionColors } from '../../models';
 import { checkBotPermissions } from '../../utils/permissions';
 import { PermissionGuard } from '../../guards/PermissionGuard';
@@ -172,6 +173,10 @@ export class EditStockpile {
 
     delete this.hex[interaction.user.id];
     delete this.stockpileId[interaction.user.id];
+
+    // Restart the embed update timer for this guild
+    const embedUpdateService = EmbedUpdateService.getInstance();
+    await embedUpdateService.restartTimer(guildId);
 
     const { embed, components } = await this.createStockpilesEmbed(guildId);
     const embedByGuildId = await this.stockpileDataService.getEmbedsByGuildId(guildId);

@@ -3,6 +3,7 @@ import 'dotenv/config'
 import { dirname, importx } from '@discordx/importer'
 import { IntentsBitField } from 'discord.js'
 import { Client } from 'discordx'
+import { EmbedUpdateService } from './services/embed-update-service'
 
 async function run() {
   const client = new Client({
@@ -29,6 +30,11 @@ async function run() {
   client.once('ready', async () => {
     await client.initApplicationCommands()
     console.log('Bot started')
+
+    // Initialize embed update service
+    const embedUpdateService = EmbedUpdateService.getInstance()
+    embedUpdateService.setClient(client)
+    await embedUpdateService.initializeAllTimers()
   })
 
   await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`)
@@ -39,7 +45,24 @@ async function run() {
   }
 
   // Log in with your bot token
-  client.login(process.env.BOT_TOKEN)
+  await client.login(process.env.BOT_TOKEN)
+
+  // Graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('Shutting down gracefully...')
+    const embedUpdateService = EmbedUpdateService.getInstance()
+    embedUpdateService.stopAllTimers()
+    client.destroy()
+    process.exit(0)
+  })
+
+  process.on('SIGTERM', () => {
+    console.log('Shutting down gracefully...')
+    const embedUpdateService = EmbedUpdateService.getInstance()
+    embedUpdateService.stopAllTimers()
+    client.destroy()
+    process.exit(0)
+  })
 }
 
 run()

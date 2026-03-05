@@ -18,6 +18,7 @@ import { PermissionGuard } from '../../guards/PermissionGuard';
 import { Faction, FactionColors, type FactionType } from '../../models';
 import { AddStockpileIds, Command } from '../../models/constants';
 import { StockpileDataService } from '../../services/stockpile-data-service';
+import { EmbedUpdateService } from '../../services/embed-update-service';
 import { addHelpTip } from '../../utils/embed';
 import { formatStockpileWithExpiration } from '../../utils/expiration';
 import { checkBotPermissions } from '../../utils/permissions';
@@ -307,6 +308,10 @@ export class AddStockpile {
 
     // Remove the stored location after use
     delete this.selectedLocations[interaction.user.id];
+
+    // Start/restart the embed update timer for this guild
+    const embedUpdateService = EmbedUpdateService.getInstance();
+    await embedUpdateService.restartTimer(guildId);
 
     // Create an embed with the stockpile details
     const { embed, components } = await this.createStockpilesEmbed(guildId);
