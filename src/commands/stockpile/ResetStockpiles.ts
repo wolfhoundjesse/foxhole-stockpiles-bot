@@ -67,14 +67,16 @@ export class ResetStockpilesCommand {
       );
     }
 
-    const stockpileFields = Object.keys(stockpiles).map(hex => {
-      return {
-        name: hex,
-        value:
-          stockpiles[hex].map(stockpile => formatStockpileWithExpiration(stockpile)).join('\n\n') ||
-          'No stockpiles'
-      };
-    });
+    const stockpileFields = Object.keys(stockpiles)
+      .sort()
+      .map(hex => {
+        return {
+          name: hex,
+          value:
+            stockpiles[hex].map(stockpile => formatStockpileWithExpiration(stockpile)).join('\n\n') ||
+            'No stockpiles'
+        };
+      });
 
     return addHelpTip(
       new EmbedBuilder()

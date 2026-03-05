@@ -39,12 +39,14 @@ export class DeleteStockpile {
 
     try {
       const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId);
-      const stockpileOptions = Object.entries(stockpiles).flatMap(([hex, stockpileList]) =>
-        stockpileList.map(stockpile => ({
-          label: `${hex} - ${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName}`,
-          value: stockpile.id
-        }))
-      );
+      const stockpileOptions = Object.entries(stockpiles)
+        .sort(([hexA], [hexB]) => hexA.localeCompare(hexB))
+        .flatMap(([hex, stockpileList]) =>
+          stockpileList.map(stockpile => ({
+            label: `${hex} - ${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName}`,
+            value: stockpile.id
+          }))
+        );
 
       if (stockpileOptions.length === 0) {
         await interaction.reply({
@@ -194,14 +196,16 @@ export class DeleteStockpile {
       );
     }
 
-    const stockpileFields = Object.keys(stockpiles).map(hex => {
-      return {
-        name: hex,
-        value:
-          stockpiles[hex].map(stockpile => formatStockpileWithExpiration(stockpile)).join('\n\n') ||
-          'No stockpiles'
-      };
-    });
+    const stockpileFields = Object.keys(stockpiles)
+      .sort()
+      .map(hex => {
+        return {
+          name: hex,
+          value:
+            stockpiles[hex].map(stockpile => formatStockpileWithExpiration(stockpile)).join('\n\n') ||
+            'No stockpiles'
+        };
+      });
 
     return addHelpTip(
       new EmbedBuilder()

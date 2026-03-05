@@ -42,7 +42,7 @@ export class AddStockpile {
       await this.stockpileDataService.getStorageLocationsByRegion(faction);
 
     const hexSelectMenu = this.createHexSelectMenu(
-      Object.keys(storageLocationsByRegion),
+      Object.keys(storageLocationsByRegion).sort(),
       this.hexPages[interaction.user.id],
       interaction.user.id
     );
@@ -150,7 +150,7 @@ export class AddStockpile {
       }
 
       const hexSelectMenu = this.createHexSelectMenu(
-        Object.keys(storageLocationsByRegion),
+        Object.keys(storageLocationsByRegion).sort(),
         this.hexPages[interaction.user.id],
         interaction.user.id
       );
@@ -397,14 +397,16 @@ export class AddStockpile {
       );
     }
 
-    const stockpileFields = Object.keys(stockpiles).map(hex => {
-      return {
-        name: hex,
-        value:
-          stockpiles[hex].map(stockpile => formatStockpileWithExpiration(stockpile)).join('\n\n') ||
-          'No stockpiles'
-      };
-    });
+    const stockpileFields = Object.keys(stockpiles)
+      .sort()
+      .map(hex => {
+        return {
+          name: hex,
+          value:
+            stockpiles[hex].map(stockpile => formatStockpileWithExpiration(stockpile)).join('\n\n') ||
+            'No stockpiles'
+        };
+      });
 
     return addHelpTip(
       new EmbedBuilder()

@@ -39,13 +39,15 @@ export class ResetStockpileTimer {
 
     try {
       const stockpiles = await this.stockpileDataService.getStockpilesByGuildId(guildId);
-      const stockpileOptions = Object.entries(stockpiles).flatMap(([hex, stockpileList]) =>
-        stockpileList.map(stockpile => ({
-          label: `${hex} - ${stockpile.locationName} - ${stockpile.stockpileName}`,
-          value: stockpile.id,
-          description: `Expires: ${this.formatExpirationTime(stockpile.expiresAt)}`
-        }))
-      );
+      const stockpileOptions = Object.entries(stockpiles)
+        .sort(([hexA], [hexB]) => hexA.localeCompare(hexB))
+        .flatMap(([hex, stockpileList]) =>
+          stockpileList.map(stockpile => ({
+            label: `${hex} - ${stockpile.locationName} - ${stockpile.stockpileName}`,
+            value: stockpile.id,
+            description: `Expires: ${this.formatExpirationTime(stockpile.expiresAt)}`
+          }))
+        );
 
       if (stockpileOptions.length === 0) {
         await interaction.reply({
@@ -157,18 +159,20 @@ export class ResetStockpileTimer {
       );
     }
 
-    const stockpileFields = Object.keys(stockpiles).map(hex => {
-      return {
-        name: hex,
-        value:
-          stockpiles[hex]
-            .map(stockpile => {
-              const expirationStatus = this.getExpirationStatus(stockpile.expiresAt);
-              return `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}\n${expirationStatus}`;
-            })
-            .join('\n\n') || 'No stockpiles'
-      };
-    });
+    const stockpileFields = Object.keys(stockpiles)
+      .sort()
+      .map(hex => {
+        return {
+          name: hex,
+          value:
+            stockpiles[hex]
+              .map(stockpile => {
+                const expirationStatus = this.getExpirationStatus(stockpile.expiresAt);
+                return `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}\n${expirationStatus}`;
+              })
+              .join('\n\n') || 'No stockpiles'
+        };
+      });
 
     return addHelpTip(
       new EmbedBuilder()
