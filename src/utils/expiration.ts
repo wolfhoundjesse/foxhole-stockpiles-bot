@@ -11,11 +11,12 @@ export function formatExpirationTime(expiresAt: string): string {
   const hours = Math.floor(hoursRemaining % 24)
   const minutes = Math.floor((hoursRemaining - Math.floor(hoursRemaining)) * 60)
 
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m remaining`
-  }
+  const parts = []
+  if (days > 0) parts.push(`${days}d`)
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
 
-  return `${hours}h ${minutes}m remaining`
+  return parts.length > 0 ? `${parts.join(' ')} remaining` : 'Less than 1m remaining'
 }
 
 export function getExpirationStatus(expiresAt: string): string {
