@@ -7,8 +7,14 @@ export function formatExpirationTime(expiresAt: string): string {
     return 'EXPIRED'
   }
 
-  const hours = Math.floor(hoursRemaining)
-  const minutes = Math.floor((hoursRemaining - hours) * 60)
+  const days = Math.floor(hoursRemaining / 24)
+  const hours = Math.floor(hoursRemaining % 24)
+  const minutes = Math.floor((hoursRemaining - Math.floor(hoursRemaining)) * 60)
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m remaining`
+  }
+
   return `${hours}h ${minutes}m remaining`
 }
 

@@ -15,6 +15,7 @@ import { FactionColors } from '../../models';
 import { checkBotPermissions } from '../../utils/permissions';
 import { PermissionGuard } from '../../guards/PermissionGuard';
 import { addHelpTip } from '../../utils/embed';
+import { formatExpirationTime, getExpirationStatus } from '../../utils/expiration';
 
 @Discord()
 @Guard(PermissionGuard)
@@ -45,7 +46,7 @@ export class ResetStockpileTimer {
           stockpileList.map(stockpile => ({
             label: `${hex} - ${stockpile.locationName} - ${stockpile.stockpileName}`,
             value: stockpile.id,
-            description: `Expires: ${this.formatExpirationTime(stockpile.expiresAt)}`
+            description: `Expires: ${formatExpirationTime(stockpile.expiresAt)}`
           }))
         );
 
@@ -167,7 +168,7 @@ export class ResetStockpileTimer {
           value:
             stockpiles[hex]
               .map(stockpile => {
-                const expirationStatus = this.getExpirationStatus(stockpile.expiresAt);
+                const expirationStatus = getExpirationStatus(stockpile.expiresAt);
                 return `${stockpile.locationName} - ${stockpile.storageType} - ${stockpile.stockpileName} - ${stockpile.code}\n${expirationStatus}`;
               })
               .join('\n\n') || 'No stockpiles'
@@ -181,35 +182,5 @@ export class ResetStockpileTimer {
         .addFields(stockpileFields)
         .setTimestamp()
     );
-  }
-
-  private formatExpirationTime(expiresAt: string): string {
-    const now = new Date();
-    const expiration = new Date(expiresAt);
-    const hoursRemaining = Math.max(0, (expiration.getTime() - now.getTime()) / (1000 * 60 * 60));
-
-    if (hoursRemaining <= 0) {
-      return 'EXPIRED';
-    }
-
-    const hours = Math.floor(hoursRemaining);
-    const minutes = Math.floor((hoursRemaining - hours) * 60);
-    return `${hours}h ${minutes}m remaining`;
-  }
-
-  private getExpirationStatus(expiresAt: string): string {
-    const now = new Date();
-    const expiration = new Date(expiresAt);
-    const hoursRemaining = (expiration.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (hoursRemaining <= 0) {
-      return '⚠️ **EXPIRED** - Please reset the timer or delete this stockpile';
-    }
-
-    if (hoursRemaining <= 8) {
-      return `⚠️ **${this.formatExpirationTime(expiresAt)}** - Stockpile is running low on time!`;
-    }
-
-    return `⏰ ${this.formatExpirationTime(expiresAt)}`;
   }
 }
