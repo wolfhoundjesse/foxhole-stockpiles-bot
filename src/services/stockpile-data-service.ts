@@ -100,7 +100,7 @@ export class StockpileDataService {
       const colonialDynamicMapItems = dynamicMap.mapItems
         .filter(
           (item: MapItem) =>
-            item.teamId === Faction.Colonials && (item.iconType === 33 || item.iconType === 52),
+            item.teamId === Faction.Colonials && (item.iconType === 33 || item.iconType === 52 || item.iconType === 88),
         )
         .map((item: MapItem) => ({
           ...item,
@@ -112,7 +112,7 @@ export class StockpileDataService {
       const wardenDynamicMapItems = dynamicMap.mapItems
         .filter(
           (item: MapItem) =>
-            item.teamId === Faction.Wardens && (item.iconType === 33 || item.iconType === 52),
+            item.teamId === Faction.Wardens && (item.iconType === 33 || item.iconType === 52 || item.iconType === 88),
         )
         .map((item: MapItem) => ({
           ...item,
@@ -131,7 +131,11 @@ export class StockpileDataService {
               return distanceA - distanceZ
             })
             .at(0)?.text as string
-          const storageType = mapItem.iconType === 33 ? 'Storage Depot' : 'Seaport'
+          const storageType = mapItem.iconType === 33
+            ? 'Storage Depot'
+            : mapItem.iconType === 52
+            ? 'Seaport'
+            : 'Aircraft Depot'
 
           return { locationName, storageType }
         },
@@ -151,7 +155,11 @@ export class StockpileDataService {
               return distanceA - distanceZ
             })
             .at(0)?.text as string
-          const storageType = mapItem.iconType === 33 ? 'Storage Depot' : 'Seaport'
+          const storageType = mapItem.iconType === 33
+            ? 'Storage Depot'
+            : mapItem.iconType === 52
+            ? 'Seaport'
+            : 'Aircraft Depot'
 
           return { locationName, storageType }
         },

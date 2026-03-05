@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -f \".cursorrules\" ])",
+      "Bash(then cat .cursorrules)",
+      "Bash(else echo \"No .cursorrules file found\")",
+      "Bash(fi)",
+      "Bash(if [ -d \".cursor/rules\" ])",
+      "Bash(then ls -la .cursor/rules)",
+      "Bash(else echo \"No .cursor/rules directory found\")",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(bun dev)",
+      "Bash(bun install)",
+      "Bash(bun run:*)",
+      "Bash(bun -e:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(export POSTGRES_USER=foxhole_user)",
+      "Bash(export POSTGRES_PASSWORD=foxhole_password)",
+      "Bash(export POSTGRES_HOST=localhost)",
+      "Bash(export POSTGRES_PORT=5432)",
+      "Bash(export POSTGRES_DATABASE=foxhole_stockpiles)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
